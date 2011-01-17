@@ -1,7 +1,0 @@
-memsize_V_f = 8 * 4 * 512*512;
-memsize_spots_f = 128 * 4;
-memsize_SLM_f = 512*512*4;  
-memsize_SLM_uc = 512*512;
-memsize_SLM_cc = 512*512*8;
-
-totmem = 4*memsize_SLM_f + 7*memsize_V_f + 6*
