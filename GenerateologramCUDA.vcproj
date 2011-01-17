@@ -784,10 +784,6 @@
 				RelativePath=".\GenerateHologramCUDA.h"
 				>
 			</File>
-			<File
-				RelativePath=".\PCIeBoard.h"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
