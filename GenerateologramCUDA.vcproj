@@ -260,7 +260,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib Bnsboard.lib PCIeBoard.lib Nafxcw.lib Libcmt.lib"
+				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
@@ -719,7 +719,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\LoadHologram.cpp"
+				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
 				>
 			</File>
 			<File
@@ -799,6 +799,10 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 		</Filter>
+		<File
+			RelativePath=".\readme.txt"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

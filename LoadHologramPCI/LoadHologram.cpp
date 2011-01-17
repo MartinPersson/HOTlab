@@ -59,7 +59,7 @@ extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* 
 	//we will have 2 frames of memory that we write images to. This is to avoid conflicts where the hardware
 	//is reading from the same frame in memory that the user is writing to - this would be bad
 	Frame = 0;
-	return 1;	/tells the main function to apply the LUT in software
+	return 1;	//tells the main function to apply the LUT in software
 }
 
 extern "C" void LoadImg(unsigned char* Img)
