@@ -81,7 +81,7 @@ bool bEnableSLM;
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to talk to SLM Hardware
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" int InitalizeSLM(								//returns 0 if PCIe hardware is used, 1 if PCI hardware is used
+extern "C" int InitalizeSLM(	//returns 0 if PCIe hardware is used, 1 if PCI hardware is used
 	bool bRAMWriteEnable, char* LUTFile, unsigned char* LUT, unsigned short TrueFrames
 );
 

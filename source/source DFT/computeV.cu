@@ -43,21 +43,3 @@ __global__ void computeV(float *g_Vre, float *g_Vim, float *g_pSLM, float *g_del
 		}
 	}
 }
-
-
-/* Old version (50% slower)
-__global__ void computeV(float *g_Vre, float *g_Vim, float *g_pSLM, float *g_delta, int N, int N_spots, float *g_aLaser)
-{
-	
-	int N_tot = N*N_spots;
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int id = idx&(int)(N-1);
-	if (idx<N_tot)
-	{
-		float p;		
-		p = g_pSLM[id] - g_delta[idx];
- 		g_Vre[idx] = cosf(p) * g_aLaser[id];
-		g_Vim[idx] = sinf(p) * g_aLaser[id];
-	}
-}
-*/

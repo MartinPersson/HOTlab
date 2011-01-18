@@ -1,5 +1,7 @@
-/*   
-   Hologram generating algorithms for CUDA Devices
+//////////////////////////////////////////////////////////////////////////////////////
+//Calculate one matrix for each spot containing its distance to each pixel on the SLM
+///////////////////////////////////////////////////////////////////////////////////////
+/*
    Copyright 2009, 2010, 2011 Martin Persson 
    martin.persson@physics.gu.se
 
@@ -19,9 +21,6 @@
     You should have received a copy of the GNU General Public License
     along with GenerateHologramCUDA.  If not, see <http://www.gnu.org/licenses/>.
 */
-///////////////////////////////////////////////////////////////////////////////////////
-//Calculate one matrix for each spot containing its distance to each pixel on the SLM
-///////////////////////////////////////////////////////////////////////////////////////
 
 #include "GenerateHologramCUDA.h"
 

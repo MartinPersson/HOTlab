@@ -2,8 +2,7 @@
    Hologram generating algorithms for CUDA Devices
    Copyright 2009, 2010, 2011 Martin Persson 
    martin.persson@physics.gu.se
-
-
+   
    This file is part of GenerateHologramCUDA.
 
     GenerateHologramCUDA is free software: you can redistribute it and/or 
