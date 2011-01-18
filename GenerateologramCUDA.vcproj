@@ -734,11 +734,7 @@
 				Name="GS Fresnel new"
 				>
 				<File
-					RelativePath=".\source\source DFT New\computePhiNew.cu"
-					>
-				</File>
-				<File
-					RelativePath=".\source\source DFT New\transformToFarfield.cu"
+					RelativePath=".\source\GS_Fresnel_b_functions.cu"
 					>
 				</File>
 			</Filter>
@@ -746,7 +742,7 @@
 				Name="Lenses and Prisms"
 				>
 				<File
-					RelativePath=".\source\source Lenses and Prisms\LensesAndPrisms.cu"
+					RelativePath=".\source\LensesAndPrisms.cu"
 					>
 				</File>
 			</Filter>
@@ -754,11 +750,11 @@
 				Name="GS Fresnel"
 				>
 				<File
-					RelativePath=".\GS_Fresnel_functions.cu"
+					RelativePath=".\source\GS_Fresnel_a_functions.cu"
 					>
 				</File>
 				<File
-					RelativePath=".\source\source DFT\reduction_kernel.cu"
+					RelativePath=".\source\reduction_kernel.cu"
 					>
 				</File>
 			</Filter>
