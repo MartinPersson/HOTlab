@@ -731,7 +731,7 @@
 				>
 			</File>
 			<Filter
-				Name="GS Fresnel new"
+				Name="GS Fresnel b"
 				>
 				<File
 					RelativePath=".\source\GS_Fresnel_b_functions.cu"
@@ -747,7 +747,7 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="GS Fresnel"
+				Name="GS Fresnel a"
 				>
 				<File
 					RelativePath=".\source\GS_Fresnel_a_functions.cu"
