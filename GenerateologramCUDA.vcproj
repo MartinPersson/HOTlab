@@ -80,10 +80,10 @@
 				Name="VCLinkerTool"
 				UseLibraryDependencyInputs="false"
 				AdditionalOptions="/FORCE:MULTIPLE"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreAllDefaultLibraries="false"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
@@ -173,7 +173,7 @@
 				Name="VCLinkerTool"
 				UseLibraryDependencyInputs="false"
 				AdditionalOptions="/FORCE:MULTIPLE"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
@@ -347,10 +347,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib Bnsboard.lib PCIeBoard.lib Nafxcw.lib Libcmt.lib"
+				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
@@ -432,10 +432,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib Nafxcwd.lib Libcmtd.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib Nafxcwd.lib Libcmtd.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcwd.lib;Libcmtd.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
@@ -515,10 +515,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib Nafxcwd.lib Libcmtd.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib Nafxcwd.lib Libcmtd.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcwd.lib;Libcmtd.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
@@ -594,10 +594,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
@@ -673,10 +673,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib Bnsboard.lib"
+				AdditionalDependencies="cudart.lib cutil32D.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
