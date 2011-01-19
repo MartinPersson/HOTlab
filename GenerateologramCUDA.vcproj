@@ -263,7 +263,7 @@
 				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;C:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
