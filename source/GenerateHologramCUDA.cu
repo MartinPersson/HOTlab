@@ -269,7 +269,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	cudaMalloc((void**)&d_pSLM, memsize_SLM_f);
 	cudaMalloc((void**)&d_pSLM_start, memsize_SLM_f);
 	cudaMalloc((void**)&d_pSLM_uc, memsize_SLM_uc);
-
+	cudaMemset(d_pSLM, 0, N_pixels*sizeof(float)); 
 	cudaMemcpy(d_weights_start, weights, MaxSpots*(N_iterations_last+1)*sizeof(float), cudaMemcpyHostToDevice);
 
 	//Open up communication to the PCIe hardware
