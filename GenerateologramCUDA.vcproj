@@ -753,10 +753,6 @@
 					RelativePath=".\source\GS_Fresnel_a_functions.cu"
 					>
 				</File>
-				<File
-					RelativePath=".\source\reduction_kernel.cu"
-					>
-				</File>
 			</Filter>
 		</Filter>
 		<Filter

@@ -8,16 +8,16 @@
    This file is part of GenerateHologramCUDA.
 
     GenerateHologramCUDA is free software: you can redistribute it and/or 
-    modify it under the terms of the GNU General Public License as published 
+    modify it under the terms of the GNU Lesser General Public License as published 
     by the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     GenerateHologramCUDA is distributed in the hope that it will be 
     useful, but WITHOUT ANY WARRANTY; without even the implied warranty
     of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
+    You should have received a copy of the GNU Lesser General Public License
     along with GenerateHologramCUDA.  If not, see <http://www.gnu.org/licenses/>.
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,19 +94,8 @@ __global__ void f2uc(unsigned char *uc,
 __global__ void uc2f(float *f, 
 					 unsigned char *uc, 
 					 int N);
-void reduce(int size, 
-			int threads, 
-			int blocks, 
-			float *d_idata, 
-			float *d_odata, 
-			int offset);
-void Reduce(int  n, 
-			int maxThreads, 
-			int maxBlocks, 
-			float* d_idata, 
-			float* d_odata, 
-			int offset);
 
+void sumV(float* d_in, float* d_out, int offset);
 
 
 __global__ void LensesAndPrisms(float *g_x, 
