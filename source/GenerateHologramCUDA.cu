@@ -71,8 +71,6 @@ int MaxSpots, n_blocks_V, n_blocks_Phi, memsize_SLM_f, memsize_SLM_uc, memsize_V
 
 unsigned char *d_pSLM_uc;						//The optimized phase pattern, unsigned char, the one sent to the SLM
 unsigned char *h_LUT, *d_LUT;
-int maxThreads = 128;
-int maxBlocks = 128;
 int maxThreads_device;
 int use_LUTfile;
 bool bEnableSLM;
