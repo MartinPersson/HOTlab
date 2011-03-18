@@ -723,7 +723,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
+				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
 				>
 			</File>
 			<File

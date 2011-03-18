@@ -1,4 +1,11 @@
-Instructions for compilation and use of the GenerateHologramCUDA dll
+The project consists of two parts: a dll written in CUDA that generates holograms on CUDA suported GPUs and a GUI program written in LabVIEW. The dll is licensed under LGPL and the LabVIEW programs under GPL.
+
+The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface. By default, the dll is compiled for use with a PCIe based SLM. To change to a PCI based SLM, just copy and replace GenerateHologramCUDA.dll with the on located in the LabVIEW\GenerateHologramCUDA_PCI folder. 
+
+A quick start guide for the LabVIEW program is located in the "docs" folder.
+
+
+Instructions for compilation and use of the GenerateHologramCUDA dll:
 
 To compile CUDA project:
 -Install Visual Studio 2008
@@ -15,9 +22,3 @@ To run dll with SLM enabled:
 -Put PCIEboard.dll and wdapi900.dll in system32 folder (or add other location to environment variables (?)) . For the PCI version, put Bnsboard.dll, 512Aboard.dll and 256Aboard.dll in the system32 folder.
 -Put LUT file for the SLM in the same folder as GenerateHologramCUDA.dll.
 
-Error message:
-fatal error C1083: Cannot open include file: 'cutil.h': No such file or directory
-Solution
-Go to Configuration Properties – CUDA Build Rule v3.0.0 – General – Additional include Directories and add : $(NVSDKCOMPUTE_ROOT)\C\common\inc
-
-To run dll on systems with Arryx HOT Kit installed:
