@@ -7,18 +7,18 @@
 
    This file is part of GenerateHologramCUDA.
 
-    GenerateHologramCUDA is free software: you can redistribute it and/or 
-    modify it under the terms of the GNU Lesser General Public License as published 
-    by the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   GenerateHologramCUDA is free software: you can redistribute it and/or 
+   modify it under the terms of the GNU Lesser General Public License as published 
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-    GenerateHologramCUDA is distributed in the hope that it will be 
-    useful, but WITHOUT ANY WARRANTY; without even the implied warranty
-    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
+   GenerateHologramCUDA is distributed in the hope that it will be 
+   useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public License
-    along with GenerateHologramCUDA.  If not, see <http://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU Lesser General Public License
+   along with GenerateHologramCUDA.  If not, see <http://www.gnu.org/licenses/>.
 */
 ///////////////////////////////////////////////////////////////////////////////////
 //The function "GenerateHologram" contains two different algorithms for
@@ -118,7 +118,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	cudaMemcpy(d_z, z_spots, memsize_spots_f, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_I, I_spots, memsize_spots_f, cudaMemcpyHostToDevice);
 	
-	if ((method == 0)||(N_spots < 3))
+	if ((method == 0)||((method == 1)&&(N_spots < 3)))
 	{
 		//////////////////////////////////////////////////
 		//Generate the hologram using "Lenses and Prisms"

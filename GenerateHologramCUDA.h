@@ -1,6 +1,7 @@
 /*   
    Header file for GenerateHologramCUDA
    Hologram generating algorithms for CUDA Devices
+   
    Copyright 2009, 2010, 2011 Martin Persson 
    martin.persson@physics.gu.se
 
@@ -36,7 +37,7 @@
 typedef float2 cufftComplex;
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846f
 #endif
 
 #define block_size 256
