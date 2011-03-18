@@ -1,6 +1,6 @@
 The project consists of two parts: a dll written in CUDA that generates holograms on CUDA suported GPUs and a GUI program written in LabVIEW. The dll is licensed under LGPL and the LabVIEW programs under GPL.
 
-The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface. By default, the dll is compiled for use with a PCIe based SLM. To change to a PCI based SLM, just copy and replace GenerateHologramCUDA.dll with the on located in the LabVIEW\GenerateHologramCUDA_PCI folder. 
+The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface. By default, the LabVIEW program links to the dll compiled for PCIe based SLMs. To change to a PCI based SLM, just copy and replace GenerateHologramCUDA.dll with the on located in the LabVIEW\GenerateHologramCUDA_PCI folder. 
 
 A quick start guide for the LabVIEW program is located in the "docs" folder.
 
