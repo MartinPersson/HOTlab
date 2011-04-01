@@ -9,7 +9,7 @@ Instructions for compilation and use of the GenerateHologramCUDA dll:
 
 To compile CUDA project:
 -Install Visual Studio 2008
--Install CUDA toolkit and CUDA SDK
+-Install CUDA toolkit and CUDA SDK (the included dll is compiled for CUDA 3.1)
 -Download and run the CUDA VS Wizard (http://sourceforge.net/projects/cudavswizard/files/)
 
 To compile dll for SLM communication:
