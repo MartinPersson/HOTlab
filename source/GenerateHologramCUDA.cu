@@ -221,10 +221,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId, float *h_AberrationCorr)
 {
-	int num_devices;
-	cudaGetDeviceCount(&num_devices);
-	if (0>deviceId>(num_devices-1))
-		deviceId = 0;
 	cudaSetDevice(deviceId); 
 	cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, 0);
@@ -309,7 +305,9 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	cudaFree(d_pSLM);
 	cudaFree(d_pSLM_start);
 	cudaFree(d_pSLM_uc);
-
+	
+	cudaThreadExit();
+	
 	if (use_LUTfile)
 		cudaFree(d_LUT);
 
