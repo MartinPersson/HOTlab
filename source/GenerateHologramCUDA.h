@@ -30,7 +30,7 @@
 #include <math.h>
 
 // includes, project
-#include <cutil.h>
+
 #include <cufft.h>
 
 // Complex data type
