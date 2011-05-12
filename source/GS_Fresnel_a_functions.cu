@@ -266,8 +266,8 @@ __global__ void sum2(float *g_in, float *g_out, int offset)
 void sumV(float* d_in, float* d_out, int offset)
 {
 	sum1<<<512, 256, 256*sizeof(float)>>>(d_in, d_out, offset);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	sum2<<<1, 256, 256*sizeof(float)>>>(d_out, d_out, offset);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	return;
 }
