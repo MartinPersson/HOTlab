@@ -155,9 +155,13 @@ __global__ void computePhiNew(float *g_x,
 		{
 			if (tid < N_spots)
 			{
+				
 				float Vre = g_SpotsRe[tid];
 				float Vim = g_SpotsIm[tid];
-				s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);		//divide by the desired amplitude for spot m
+				if (iteration == 0)
+					s_aSpot[tid] = 1/sqrtf(g_I[tid]);
+				else
+					s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);		//divide by the desired amplitude for spot m
 				//s_aSpot_sum[tid] = s_aSpot[tid];
 				s_pSpot[tid] = atan2f(Vim, Vre);
 			}	
@@ -177,7 +181,10 @@ __global__ void computePhiNew(float *g_x,
 				float Vre = g_SpotsRe[tid];
 				float Vim = g_SpotsIm[tid];
 				s_pSpot[tid] = atan2f(Vim, Vre);
-				s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);
+				if (iteration == 0)
+					s_aSpot[tid] = 1/sqrtf(g_I[tid]);
+				else
+					s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);		//divide by the desired amplitude for spot m
 				//s_aSpot_sum[tid] = s_aSpot[tid];
 				s_weight[tid] = g_weights[tid + iteration*N_spots];
 				s_xm[tid] = g_x[tid];

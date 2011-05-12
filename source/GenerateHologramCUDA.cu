@@ -205,8 +205,8 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		f2uc<<< n_blocks_Phi, block_size >>>(d_pSLM_uc, d_pSLM, N_pixels, d_LUT, use_LUTfile, data_w);
 		cudaDeviceSynchronize();
 		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);			
-		//cudaMemcpy(weights, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
-		cudaMemcpy(weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(weights, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+		//cudaMemcpy(weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 	}
 	
 	//load image to the PCIe hardware  SLMstuff
@@ -232,7 +232,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	int MaxIterations = 1000;
 	data_w = 512;
 	N_pixels = data_w * data_w;
-	N_spots_a = 2;
+	N_spots_a = 3;
 	N_iterations_last = 10;
 	memsize_V_f = N_pixels * N_spots_a*sizeof(float);
 	memsize_spots_f = MaxSpots * sizeof(float);
