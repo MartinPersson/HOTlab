@@ -108,6 +108,8 @@ __global__ void LensesAndPrisms(float *g_x,
 								unsigned char *g_LUT, 
 								int use_linLUT, 
 								int data_w);
+__global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, unsigned int N_pixels, int data_w);
+
 __global__ void computePhiNew(float *g_x, 
 							float *g_y, 
 							float *g_z, 

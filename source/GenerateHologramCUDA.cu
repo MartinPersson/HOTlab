@@ -125,6 +125,8 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		//////////////////////////////////////////////////
 		LensesAndPrisms<<< n_blocks_Phi, block_size >>>(d_x, d_y, d_z, d_I, d_pSLM_uc, N_spots, d_LUT, use_LUTfile, data_w);
 		cudaDeviceSynchronize();
+		checkAmplitudes<<< N_spots, 512>>>(d_x, d_y, d_z, d_pSLM_uc, d_amps, N_spots, N_pixels, data_w);
+		cudaDeviceSynchronize();
 		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);		
 		retur = 5;	
 	}
@@ -205,7 +207,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		f2uc<<< n_blocks_Phi, block_size >>>(d_pSLM_uc, d_pSLM, N_pixels, d_LUT, use_LUTfile, data_w);
 		cudaDeviceSynchronize();
 		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);			
-		cudaMemcpy(weights, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 		//cudaMemcpy(weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 	}
 	
