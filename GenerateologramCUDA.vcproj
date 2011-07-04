@@ -723,6 +723,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\GS_FFT_functions.cu"
+				>
+			</File>
+			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 			</File>

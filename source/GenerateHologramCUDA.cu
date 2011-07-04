@@ -75,6 +75,13 @@ int maxThreads_device;
 int use_LUTfile;
 bool bEnableSLM;
 
+////////////////////////////////////////////////////
+//Global declarations for the FFT version
+////////////////////////////////////////////////////
+float *d_aLaserFFT, *d_LUT_coeff;
+cufftHandle plan;
+cufftComplex *d_FFTo, *d_FFTd, *d_SLM_cc;
+int *d_spot_index, memsize_SLM_cc;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to talk to SLM Hardware
@@ -211,7 +218,50 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		cudaMemcpy(weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 		//cudaMemcpy(weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 	}
+	//generate hologram using fast fourier transforms 
+	else if (method ==2)			
+	{
+		//cudaMemcpy(d_pSLM_uc, h_pSLM, memsize_SLM_uc, cudaMemcpyHostToDevice);
+		//cudaDeviceSynchronize();
+		//p_uc2c_cc_shift<<< n_blocks_Phi, block_size >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
+
+		float amp_desired = N_pixels * sqrt(1.0f/(float)N_spots);
+		float weight = 1.0f/(float)N_spots;
+		for (int i=0; i < N_spots; ++i)
+		{
+			weights[i] = weight;
+		} 
+		cudaDeviceSynchronize();		
+		cudaMemcpy(d_weights, weights, N_spots * sizeof(float), cudaMemcpyHostToDevice);
+		cudaDeviceSynchronize();
+		cudaMemset(d_FFTd, 0, memsize_SLM_cc);
+		cudaDeviceSynchronize();		
+		XYtoIndex <<< 1, N_spots >>>(d_x,  d_y, d_spot_index, N_spots, data_w);
+		cudaDeviceSynchronize();		
+		for (int l=0; l<N_iterations; l++)
+		{
+			// Transform to trapping plane
+			cufftExecC2C(plan, d_SLM_cc, d_FFTo, CUFFT_FORWARD);
+			cudaDeviceSynchronize();
+
+			// Copy phases for spot indices in d_FFTo to d_FFTd
+			usePhasesW <<< 1, N_spots >>> (d_FFTo, d_FFTd, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
+			cudaDeviceSynchronize();
+				//Transform back to SLM plane
+			cufftExecC2C(plan, d_FFTd, d_SLM_cc, CUFFT_INVERSE);
+			cudaDeviceSynchronize();
+
+			// Set amplitudes in d_SLM to the laser amplitude profile
+			resetAmplitudesRPC <<< n_blocks_Phi, block_size >>> (d_aLaserFFT, d_SLM_cc, d_pSLM_start, N_pixels, alpha_RPC);
+			cudaDeviceSynchronize();
+		}	
 	
+		// Calculate phases in the SLM plane   
+		getPhases<<< n_blocks_Phi, block_size >>> (d_pSLM_uc, d_pSLM_start, d_SLM_cc, d_LUT_coeff, 0, data_w);	
+		cudaMemcpy(weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+		cudaDeviceSynchronize();	
+		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);			
+	}
 	//load image to the PCIe hardware  SLMstuff
 	if(bEnableSLM)
 		LoadImg(h_pSLM);
@@ -241,6 +291,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	memsize_spots_f = MaxSpots * sizeof(float);
 	memsize_SLM_f = N_pixels * sizeof(float);  
     memsize_SLM_uc = N_pixels * sizeof(unsigned char);
+	memsize_SLM_cc = N_pixels * sizeof(cufftComplex);
     n_blocks_Phi = (N_pixels/block_size + (N_pixels%block_size == 0 ? 0:1));
     n_blocks_V = (N_spots_a*N_pixels/block_size + ((N_spots_a*N_pixels)%block_size == 0 ? 0:1));
 
@@ -272,6 +323,13 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	cudaMalloc((void**)&d_pSLM_uc, memsize_SLM_uc);
 	cudaMemset(d_pSLM, 0, N_pixels*sizeof(float)); 
 	cudaMemcpy(d_weights_start, weights, MaxSpots*(N_iterations_last+1)*sizeof(float), cudaMemcpyHostToDevice);
+	
+	cudaMalloc((void**)&d_spot_index, MaxSpots * sizeof(int));
+	cudaMalloc((void**)&d_FFTd, memsize_SLM_cc);	
+	cudaMalloc((void**)&d_FFTo, memsize_SLM_cc);
+	cudaMalloc((void**)&d_SLM_cc, memsize_SLM_cc);
+	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
+	float *h_aLaserFFT = (float *)malloc(memsize_SLM_f);
 
 	//Open up communication to the PCIe hardware
 	bEnableSLM = SLM_enabled; //SLMstuff
@@ -310,6 +368,11 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	cudaFree(d_pSLM);
 	cudaFree(d_pSLM_start);
 	cudaFree(d_pSLM_uc);
+	
+	cudaFree(d_FFTd);
+	cudaFree(d_FFTo);
+	cudaFree(d_SLM_cc);
+	cufftDestroy(plan);
 		
 	if (use_LUTfile)
 		cudaFree(d_LUT);
