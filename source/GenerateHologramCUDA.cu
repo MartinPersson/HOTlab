@@ -127,7 +127,8 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		cudaDeviceSynchronize();
 		checkAmplitudes<<< N_spots, 512>>>(d_x, d_y, d_z, d_pSLM_uc, d_amps, N_spots, N_pixels, data_w);
 		cudaDeviceSynchronize();
-		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);		
+		cudaMemcpy(h_pSLM, d_pSLM_uc, memsize_SLM_uc, cudaMemcpyDeviceToHost);	
+		cudaMemcpy(weights, d_amps, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 		retur = 5;	
 	}
 	else if (method == 1)		
@@ -215,7 +216,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	if(bEnableSLM)
 		LoadImg(h_pSLM);
 	
-
+	retur = cudaGetLastError();
 	//cudaMemcpy(h_test, d_aLaserDFT, memsize_SLM_f, cudaMemcpyDeviceToHost);
 	return retur;	
 }

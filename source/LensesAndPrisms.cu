@@ -182,6 +182,6 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	{
 		float Vre = s_Vre[0] / 262144.0;
 		float Vim = s_Vim[0] / 262144.0;
-		g_amps[spot_number] = 100;//hypotf(Vim, Vre);
+		g_amps[spot_number] = hypotf(Vim, Vre);
 	}
 }
