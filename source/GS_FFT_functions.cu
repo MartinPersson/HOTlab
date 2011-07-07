@@ -181,7 +181,7 @@ __global__ void c_cc2im_f(float *g_p, cufftComplex *g_c, int M)
 //reset amplitudes to ones PCR
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void resetAmplitudesRPC(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLM_start, int N_pixels, float RPC)
+__global__ void ReplaceAmpsSLM(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLM_start, int N_pixels, float RPC)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	
@@ -222,7 +222,7 @@ __global__ void resetAmplitudesRPC(float *g_aLaser, cufftComplex *g_cAmp, float 
 //Copy phases in desired spots
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void usePhasesW(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired)
+__global__ void ReplaceAmpsFFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired)
 {
 	int tid = threadIdx.x;
 	int spotIndex;

@@ -245,14 +245,14 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			cudaDeviceSynchronize();
 
 			// Copy phases for spot indices in d_FFTo to d_FFTd
-			usePhasesW <<< 1, N_spots >>> (d_FFTo, d_FFTd, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
+			ReplaceAmpsFFT <<< 1, N_spots >>> (d_FFTo, d_FFTd, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
 			cudaDeviceSynchronize();
 				//Transform back to SLM plane
 			cufftExecC2C(plan, d_FFTd, d_SLM_cc, CUFFT_INVERSE);
 			cudaDeviceSynchronize();
 
 			// Set amplitudes in d_SLM to the laser amplitude profile
-			resetAmplitudesRPC <<< n_blocks_Phi, block_size >>> (d_aLaserFFT, d_SLM_cc, d_pSLM_start, N_pixels, alpha_RPC);
+			ReplaceAmpsSLM <<< n_blocks_Phi, block_size >>> (d_aLaserFFT, d_SLM_cc, d_pSLM_start, N_pixels, alpha_RPC);
 			cudaDeviceSynchronize();
 		}	
 	
@@ -391,9 +391,9 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 //Add this to the header file
 //////////////////////////////////////////
 __global__ void XYtoIndex(float *d_x, float *d_y, int *spot_index, int N_spots, int data_w);
-__global__ void usePhasesW(cufftComplex *a, cufftComplex *b, int *index, int N, int iteration, float *Intensity, float *weight, float amp_desired);
+__global__ void ReplaceAmpsFFT(cufftComplex *a, cufftComplex *b, int *index, int N, int iteration, float *Intensity, float *weight, float amp_desired);
 __global__ void getPhases(unsigned char *pSLMuc, float *d_pSLM_start, cufftComplex *cSLMcc, unsigned char *g_LUT, int use_linLUT, int data_w);
-__global__ void resetAmplitudesRPC(float *a, cufftComplex *b, float *p, int M, float RPC);
+__global__ void ReplaceAmpsSLM(float *a, cufftComplex *b, float *p, int M, float RPC);
 
 
 
@@ -488,14 +488,14 @@ else if (method ==2)			//generate hologram using fast fourier transforms
 		cudaDeviceSynchronize();
 	
 		// Copy phases for spot indices in d_FFTo to d_FFTd
-		usePhasesW <<< 1, N_spots >>> (d_FFTo, d_FFTd, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
+		ReplaceAmpsFFT <<< 1, N_spots >>> (d_FFTo, d_FFTd, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
 		cudaDeviceSynchronize();
 			//Transform back to SLM plane
 		cufftExecC2C(plan, d_FFTd, d_SLM_cc, CUFFT_INVERSE);
 		cudaDeviceSynchronize();
 		
 		// Set amplitudes in d_SLM to the laser amplitudes
-		resetAmplitudesRPC <<< n_blocks_Phi, block_size >>> (d_aLaserFFT, d_SLM_cc, d_pSLM_start, N_pixels, alpha_RPC);
+		ReplaceAmpsSLM <<< n_blocks_Phi, block_size >>> (d_aLaserFFT, d_SLM_cc, d_pSLM_start, N_pixels, alpha_RPC);
 		cudaDeviceSynchronize();
 		
 		retur = l;
