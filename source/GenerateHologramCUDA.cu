@@ -58,16 +58,12 @@
 //Global declaration
 //////////////////////////////////////////////////
 float *d_x, *d_y, *d_z, *d_I;					//trap coordinates and intensity in GPU memory
-float *delta, *d_delta;							//distance between pixels on SLM and trap positions in host and GPU memory
-float *d_ei_dre, *d_ei_dim;						//exp(i*re(delta)), exp(i*re(delta))
-float *d_Vim, *d_Vre;							//energy flux contribution from each SLM pixel to each trap 
-float *d_VimR, *d_VreR;							//sum of above for each trap
 float *d_pSLM;									//the optimized phase pattern, float
 float *d_weights, *d_weights_start, *d_amps;	//used weights and calculated amplitudes for each spot and each iteration
 float *d_pSLM_start;							//Initial phase pattern
 float *d_spotRe, *d_spotIm;
 
-int MaxSpots, n_blocks_V, n_blocks_Phi, memsize_SLM_f, memsize_SLM_uc, memsize_V_f, memsize_spots_f, data_w, N_pixels, N_iterations_last, N_spots_a;
+int MaxSpots, n_blocks_Phi, memsize_SLM_f, memsize_SLM_uc, memsize_spots_f, data_w, N_pixels, N_iterations_last, N_spots_a;
 
 unsigned char *d_pSLM_uc;						//The optimized phase pattern, unsigned char, the one sent to the SLM
 unsigned char *h_LUT, *d_LUT;
@@ -169,7 +165,9 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		cudaMemcpy(weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 		//cudaMemcpy(weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 	}
+	////////////////////////////////////////////////////
 	//generate hologram using fast fourier transforms 
+	////////////////////////////////////////////////////
 	else if (method ==2)			
 	{
 		//cudaMemcpy(d_pSLM_uc, h_pSLM, memsize_SLM_uc, cudaMemcpyHostToDevice);
@@ -238,13 +236,11 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	N_pixels = data_w * data_w;
 	N_spots_a = 3;
 	N_iterations_last = 10;
-	memsize_V_f = N_pixels * N_spots_a*sizeof(float);
 	memsize_spots_f = MaxSpots * sizeof(float);
 	memsize_SLM_f = N_pixels * sizeof(float);  
     memsize_SLM_uc = N_pixels * sizeof(unsigned char);
 	memsize_SLM_cc = N_pixels * sizeof(cufftComplex);
     n_blocks_Phi = (N_pixels/block_size + (N_pixels%block_size == 0 ? 0:1));
-    n_blocks_V = (N_spots_a*N_pixels/block_size + ((N_spots_a*N_pixels)%block_size == 0 ? 0:1));
 
 	float weights[10000];
 	for (int i=0; i < MaxSpots; ++i)
@@ -259,13 +255,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	cudaMalloc((void**)&d_spotRe, memsize_spots_f );
 	cudaMalloc((void**)&d_spotIm, memsize_spots_f );
 
-	cudaMalloc((void**)&d_delta, memsize_V_f);
-	cudaMalloc((void**)&d_ei_dre, memsize_V_f);
-	cudaMalloc((void**)&d_ei_dim, memsize_V_f);
-	cudaMalloc((void**)&d_Vre, memsize_V_f);
-	cudaMalloc((void**)&d_Vim, memsize_V_f);
-	cudaMalloc((void**)&d_VreR, memsize_V_f);
-	cudaMalloc((void**)&d_VimR, memsize_V_f);
 	cudaMalloc((void**)&d_weights, MaxSpots*(MaxIterations+1)*sizeof(float));
 	cudaMalloc((void**)&d_weights_start, MaxSpots*(MaxIterations+1)*sizeof(float));
 	cudaMalloc((void**)&d_amps, MaxSpots*MaxIterations*sizeof(float));
@@ -298,7 +287,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int SLM_enabled, float *tes
 	{
 		use_LUTfile = 0;
 	}
-	return memsize_V_f;
+	return 0;
 }
 
 extern "C" __declspec(dllexport) int stopCUDAandSLM()
@@ -307,13 +296,7 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	cudaFree(d_y);
 	cudaFree(d_z);
 	cudaFree(d_I);
-	cudaFree(d_delta);
-	cudaFree(d_ei_dre);
-	cudaFree(d_ei_dim);
-	cudaFree(d_Vre);
-	cudaFree(d_Vim);
-	cudaFree(d_VreR);
-	cudaFree(d_VimR);
+
 	cudaFree(d_weights);
 	cudaFree(d_amps);
 	cudaFree(d_pSLM);

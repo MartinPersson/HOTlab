@@ -727,6 +727,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\GS_Fresnel_b_functions.cu"
+				>
+			</File>
+			<File
+				RelativePath=".\source\LensesAndPrisms.cu"
+				>
+			</File>
+			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 			</File>
@@ -734,22 +742,6 @@
 				RelativePath=".\source\uc2f.cu"
 				>
 			</File>
-			<Filter
-				Name="GS Fresnel"
-				>
-				<File
-					RelativePath=".\source\GS_Fresnel_b_functions.cu"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Lenses and Prisms"
-				>
-				<File
-					RelativePath=".\source\LensesAndPrisms.cu"
-					>
-				</File>
-			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
