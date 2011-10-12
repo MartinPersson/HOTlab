@@ -735,7 +735,7 @@
 				>
 			</File>
 			<Filter
-				Name="GS Fresnel b"
+				Name="GS Fresnel"
 				>
 				<File
 					RelativePath=".\source\GS_Fresnel_b_functions.cu"
@@ -747,14 +747,6 @@
 				>
 				<File
 					RelativePath=".\source\LensesAndPrisms.cu"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="GS Fresnel a"
-				>
-				<File
-					RelativePath=".\source\GS_Fresnel_a_functions.cu"
 					>
 				</File>
 			</Filter>
