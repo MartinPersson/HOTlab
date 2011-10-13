@@ -40,7 +40,7 @@ __global__ void f2uc(unsigned char *g_uc, float *g_f, int N_pixels, unsigned cha
 			while (j < 256)
 			{
 				s_LUT[tid + j] = g_LUT[tid + j];
-				j += block_size;
+				j += BLOCK_SIZE;
 			}
 		}
 		__syncthreads();

@@ -21,15 +21,15 @@
 */
 #include "GenerateHologramCUDA.h"
 
-__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, int use_LUTfile, int data_w)
+__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, int use_LUTfile, int data_w, bool UseAberrationCorr_b, float *d_AberrationCorr_f, bool UseLUTPol_b, float *d_LUTPolCoeff_f, int N_PolCoeff)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;
 	
-	__shared__ float s_x[block_size];
-	__shared__ float s_y[block_size];
-	__shared__ float s_z[block_size];
-	__shared__ float s_a[block_size];
+	__shared__ float s_x[BLOCK_SIZE];
+	__shared__ float s_y[BLOCK_SIZE];
+	__shared__ float s_z[BLOCK_SIZE];
+	__shared__ float s_a[BLOCK_SIZE];
 	__shared__ unsigned char s_LUT[256];	
 	if (tid < N_spots)
 	{
@@ -47,7 +47,7 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 			while (j < 256)
 			{
 				s_LUT[tid + j] = g_LUT[tid + j];
-				j += block_size;
+				j += BLOCK_SIZE;
 			}
 		}
 	}		
@@ -75,7 +75,12 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 		}
 		
 		phase2pi = atan2f(SLMim, SLMre) + M_PI;	
-		
+		if (UseAberrationCorr_b)
+		{
+			float AberrationCorr_f = d_AberrationCorr_f[idx];
+			phase2pi = phase2pi + AberrationCorr_f;
+			//modulus!!!
+		}
 
 		if (use_LUTfile == 1) 
 		{			

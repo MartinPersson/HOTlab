@@ -40,7 +40,7 @@ typedef float2 cufftComplex;
 #define M_PI 3.14159265358979323846f
 #endif
 
-#define block_size 256
+#define BLOCK_SIZE 256
 
 ////////////////////////////////////////////////////////////////////////////////
 //Global variables
@@ -69,7 +69,12 @@ __global__ void LensesAndPrisms(float *g_x,
 								int N_spots, 
 								unsigned char *g_LUT, 
 								int use_linLUT, 
-								int data_w);
+								int data_w,
+								bool UseAberrationCorr_b, 
+								float *d_AberrationCorr_f, 
+								bool UseLUTPol_b, 
+								float *d_LUTPolCoeff_f, 
+								int N_PolCoeff);
 __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, unsigned int N_pixels, int data_w);
 
 __global__ void computePhiNew(float *g_x, 

@@ -727,7 +727,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\GS_Fresnel_b_functions.cu"
+				RelativePath=".\source\GS_Fresnel_functions.cu"
 				>
 			</File>
 			<File
