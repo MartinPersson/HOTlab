@@ -222,23 +222,41 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	return retur;	
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//Set correction parameters
+////////////////////////////////////////////////////////////////////////////////
+extern "C" __declspec(dllexport) int Corrections(float *h_AberrationCorr, int UseAberrationCorr, float *h_LUTPolCoeff, int UseLUTPol, unsigned short N_PolCoeff)
+{
+	UseLUTPol_b = UseLUTPol;
+	N_LUTPolCoeff = N_PolCoeff;
+	if(UseLUTPol_b)
+	{
+		cudaMalloc((void**)&d_LUTPolCoeff_f, N_PolCoeff*sizeof(float));
+		UseLUTPol_b = !cudaMemcpy(d_LUTPolCoeff_f, h_LUTPolCoeff, N_PolCoeff*sizeof(float), cudaMemcpyHostToDevice);
+	}
+	
+	UseAberrationCorr_b = UseAberrationCorr;
+	if(UseAberrationCorr_b)
+	{
+		cudaMalloc((void**)&d_AberrationCorr_f, memsize_SLMf*sizeof(float));
+		UseAberrationCorr_b = !cudaMemcpy(d_AberrationCorr_f, h_AberrationCorr, memsize_SLMf*sizeof(float), cudaMemcpyHostToDevice);
+	}
+	return cudaGetLastError();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //Enable SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId, float *h_AberrationCorr, int UseAberrationCorr, float *h_LUTPolCoeff, int UseLUTPol, unsigned short N_PolCoeff)
+extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
 	cudaSetDevice(deviceId); 
 	cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, deviceId);
     maxThreads_device = deviceProp.maxThreadsPerBlock;
     
-	UseAberrationCorr_b = UseAberrationCorr;
-	UseLUTPol_b = UseLUTPol;
-	N_LUTPolCoeff = N_PolCoeff;
 	MaxSpots = BLOCK_SIZE;
 	int MaxIterations = 1000;
-	data_w = 512;
+	data_w = SLM_SIZE;
 	N_pixels = data_w * data_w;
 	N_iterations_last = 10;
 	memsize_spotsf = MaxSpots * sizeof(float);
@@ -259,7 +277,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_I, memsize_spotsf );
 	cudaMalloc((void**)&d_weights, MaxSpots*(MaxIterations+1)*sizeof(float));
 	cudaMalloc((void**)&d_amps, MaxSpots*MaxIterations*sizeof(float));
-
 	
 	cudaMalloc((void**)&d_spotRe_f, memsize_spotsf );
 	cudaMalloc((void**)&d_spotIm_f, memsize_spotsf );
@@ -274,16 +291,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_SLM_cc, memsize_SLMcc);
 	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
 	
-	if(UseLUTPol_b)
-	{
-		cudaMalloc((void**)&d_LUTPolCoeff_f, N_PolCoeff*sizeof(float));
-		cudaMemcpy(d_LUTPolCoeff_f, h_LUTPolCoeff, N_PolCoeff*sizeof(float), cudaMemcpyHostToDevice);
-	}
-	if(UseAberrationCorr_b)
-	{
-		cudaMalloc((void**)&d_AberrationCorr_f, memsize_SLMf*sizeof(float));
-		cudaMemcpy(d_AberrationCorr_f, h_AberrationCorr, memsize_SLMf*sizeof(float), cudaMemcpyHostToDevice);
-	}
 	cudaMalloc((void**)&d_weights_start, MaxSpots*(MaxIterations+1)*sizeof(float));
 	cudaMemcpy(d_weights_start, h_weights, MaxSpots*(N_iterations_last+1)*sizeof(float), cudaMemcpyHostToDevice);
 	float *h_aLaserFFT = (float *)malloc(memsize_SLMf);
