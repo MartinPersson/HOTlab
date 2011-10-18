@@ -21,7 +21,7 @@
 */
 #include "GenerateHologramCUDA.h"
 
-__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, int use_LUTfile, int data_w, bool UseAberrationCorr_b, float *d_AberrationCorr_f, bool UseLUTPol_b, float *d_LUTPolCoeff_f, int N_PolCoeff)
+__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, bool ApplyLUTFile_b, int data_w, bool UseAberrationCorr_b, float *d_AberrationCorr_f, bool UseLUTPol_b, float *d_LUTPolCoeff_f, int N_PolCoeff)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;
@@ -39,7 +39,7 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 		s_a[tid] = sqrtf(g_I[tid]);
 	}
 	__syncthreads();
-	if (use_LUTfile == 1)
+	if (ApplyLUTFile_b)
 	{
 		if (tid < 256)
 		{
@@ -82,7 +82,7 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 			//modulus!!!
 		}
 
-		if (use_LUTfile == 1) 
+		if (ApplyLUTFile_b) 
 		{			
 			__syncthreads();
 			phase255 = 255.0 * phase2pi / (2.0 * M_PI);

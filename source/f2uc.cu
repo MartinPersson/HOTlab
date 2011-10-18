@@ -25,13 +25,13 @@
 
 #include "GenerateHologramCUDA.h"
 
-__global__ void f2uc(unsigned char *g_uc, float *g_f, int N_pixels, unsigned char *g_LUT, int use_LUTfile, int data_w)
+__global__ void f2uc(unsigned char *g_uc, float *g_f, int N_pixels, unsigned char *g_LUT, int ApplyLUTFile_b, int data_w)
 {
 	__shared__ unsigned char s_LUT[256];
 	
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if (use_LUTfile == 1)
+	if (ApplyLUTFile_b)
 	{
 		int tid = threadIdx.x;
 		if (tid < 256)
