@@ -189,21 +189,21 @@ __global__ void ReplaceAmpsSLM(float *g_aLaser, cufftComplex *g_cAmp, float *g_p
 	if (idx<N_pixels)
 	{
 		float aLaser = 1.0f/(float)N_pixels;//g_aLaser[idx];
-		float pSLM_start = g_pSLM_start[idx];
+		float pSLMstart = g_pSLM_start[idx];
 		cufftComplex cAmp = g_cAmp[idx];
  		float phase = atan2f(cAmp.y, cAmp.x);
  		
  		if (RPC < (2.0f*M_PI))
 		{	
-			if (fabs(phase - pSLM_start) < RPC)
+			if (fabs(phase - pSLMstart) < RPC)
 			{
 				cAmp.x = aLaser*cosf(phase);
 				cAmp.y = aLaser*sinf(phase);
 			}
 			else
 			{
-				cAmp.x = aLaser*cosf(pSLM_start);
-				cAmp.y = aLaser*sinf(pSLM_start);
+				cAmp.x = aLaser*cosf(pSLMstart);
+				cAmp.y = aLaser*sinf(pSLMstart);
 			}
 		}
 		else

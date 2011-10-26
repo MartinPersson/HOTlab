@@ -37,9 +37,12 @@
 			/>
 			<Tool
 				Name="CUDA Build Rule"
+				AdditionalOptions="--ptxas-options=-v"
 				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
 				Debug="true"
+				Arch="11"
 				FastMath="true"
+				PtxAsOptionV="true"
 				Defines=""
 				Optimization="3"
 				RuntimeChecks="0"
@@ -223,9 +226,11 @@
 			/>
 			<Tool
 				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
+				AdditionalOptions=""
+				Include="$(CUDA_INC_PATH)"
 				Arch="11"
 				FastMath="true"
+				PtxAsOptionV="true"
 				Defines=""
 				Optimization="2"
 			/>
@@ -398,7 +403,9 @@
 				Name="CUDA Build Rule"
 				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
 				Debug="true"
+				Arch="11"
 				Emulation="true"
+				PtxAsOptionV="true"
 				Defines=""
 				Optimization="0"
 				RuntimeChecks="3"
@@ -564,6 +571,7 @@
 				Name="CUDA Build Rule"
 				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
 				Emulation="true"
+				PtxAsOptionV="true"
 				Defines=""
 				Optimization="2"
 			/>
@@ -731,10 +739,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\LensesAndPrisms.cu"
-				>
-			</File>
-			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 			</File>
@@ -759,6 +763,10 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 		</Filter>
+		<File
+			RelativePath=".\ClassDiagram1.cd"
+			>
+		</File>
 		<File
 			RelativePath=".\COPYING.LESSER.txt"
 			>
