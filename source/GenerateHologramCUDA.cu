@@ -166,7 +166,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 			}	
 
-			f2uc<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_pSLM_f, N_pixels, d_LUT_uc, ApplyLUT_b, data_w);
+			//f2uc<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_pSLM_f, N_pixels, d_LUT_uc, ApplyLUT_b, data_w);
 			cudaDeviceSynchronize();
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			cudaMemcpy(h_weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
@@ -284,7 +284,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		strcat(CUDAmessage,	" in function 'Corrections'\n");
 		AfxMessageBox(CUDAmessage);
 	}
-	return N_LUTPolCoeff;
+	return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

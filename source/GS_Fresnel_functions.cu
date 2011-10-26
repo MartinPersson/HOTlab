@@ -86,7 +86,26 @@ __device__ unsigned char applyPolLUT(float phase2pi, int X, int Y, float *s_c, i
 		phase255 = 0;
 	return (unsigned char)phase255;
 }
+__device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int tid)
+{
+	s_Vre[tid] += s_Vre[tid + 32];
+	s_Vim[tid] += s_Vim[tid + 32];
 
+	s_Vre[tid] += s_Vre[tid + 16];
+	s_Vim[tid] += s_Vim[tid + 16];
+
+	s_Vre[tid] += s_Vre[tid + 8];
+	s_Vim[tid] += s_Vim[tid + 8];
+
+	s_Vre[tid] += s_Vre[tid + 4];
+	s_Vim[tid] += s_Vim[tid + 4];
+
+	s_Vre[tid] += s_Vre[tid + 2];
+	s_Vim[tid] += s_Vim[tid + 2];
+
+	s_Vre[tid] += s_Vre[tid + 1];
+	s_Vim[tid] += s_Vim[tid + 1];
+}
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //Calculate hologram using "Lenses and Prisms"
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,12 +180,12 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 
 }
 
-__global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, unsigned int N_pixels, int data_w)
+__global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, int N_pixels, int data_w)
 {
 	int blockSize = 512;
 	int spot_number = blockIdx.x;
-	unsigned int tid = threadIdx.x;
-	unsigned int i = tid;
+	int tid = threadIdx.x;
+	int i = tid;
 	
 	__shared__ float s_Vre[BLOCK_SIZE];
 	__shared__ float s_Vim[BLOCK_SIZE];
@@ -177,7 +196,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 		
 	float N = data_w;
 	int logN = (int)log2(N);
-	float d = 0.001953125;	//SLM pixel size (1/512)
+	float d = 0.001953125;	//SLM pixel size (1/512)	512!
 	
 	if (tid == 0)
 		s_xm = g_x[spot_number];
@@ -186,7 +205,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	if (tid == 128)
 		s_zm = g_z[spot_number];
 	
-	float X1 = d * ((float)tid - 256.0);
+	float X1 = d * ((float)tid - 256.0);				//512!
 	float Y1 = - d * 256.0;	
 	__syncthreads();
 		
@@ -248,7 +267,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	}
 	if (tid == 0) 
 	{
-		float Vre = s_Vre[0] / 262144.0;
+		float Vre = s_Vre[0] / 262144.0;			//512!
 		float Vim = s_Vim[0] / 262144.0;
 		g_amps[spot_number] = hypotf(Vim, Vre);
 	}
@@ -259,12 +278,12 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 //Propagate from the SLM to the spot positions using Fresnel summation
 //(Works for 512x512 pixels only!)
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *g_z, float *g_pSLM2pi, float *g_Vre, float *g_Vim, int N_spots, unsigned int n, int data_w)
+__global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *g_z, float *g_pSLM2pi, float *g_Vre, float *g_Vim, int N_spots, int n, int data_w)
 {
 	int blockSize = 512;
 	int spot_number = blockIdx.x;
-	unsigned int tid = threadIdx.x;
-	unsigned int i = tid;
+	int tid = threadIdx.x;
+	int i = tid;
 	
 	__shared__ float s_Vre[BLOCK_SIZE];
 	__shared__ float s_Vim[BLOCK_SIZE];
@@ -323,27 +342,9 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 	__syncthreads(); 
 
 	
-	if (tid < 32) {
+	if (tid < 32)
+		warpReduceC(s_Vre, s_Vim, tid);
 
-		s_Vre[tid] += s_Vre[tid + 32];
-		s_Vim[tid] += s_Vim[tid + 32];
-
-		s_Vre[tid] += s_Vre[tid + 16];
-		s_Vim[tid] += s_Vim[tid + 16];
-
-		s_Vre[tid] += s_Vre[tid + 8];
-		s_Vim[tid] += s_Vim[tid + 8];
-
-		s_Vre[tid] += s_Vre[tid + 4];
-		s_Vim[tid] += s_Vim[tid + 4];
-
-		s_Vre[tid] += s_Vre[tid + 2];
-		s_Vim[tid] += s_Vim[tid + 2];
-
-		s_Vre[tid] += s_Vre[tid + 1];
-		s_Vim[tid] += s_Vim[tid + 1];
-		
-	}
 	if (tid == 0) 
 	{
 		g_Vre[spot_number] = s_Vre[0] / 262144.0;
@@ -419,7 +420,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 				s_zm[tid - 256] = g_z[tid - 256];																	
 		}
 		else
-		{		
+		{	
 			if (tid<N_spots)
 			{
 				float Vre = g_SpotsRe[tid];
@@ -455,14 +456,14 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		{
 			s_weight[tid] = s_weight[tid] * s_a_mean / s_aSpot[tid];	
 			g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
-			//g_amps[tid + N_spots*iteration] = s_aSpot[tid];		//may be excluded, used for monitoring only
+			g_amps[tid + N_spots*iteration] = s_aSpot[tid];		//may be excluded, used for monitoring only
 		}
 		__syncthreads();				
 		//get pixel coordinates (change this to allow data_w!=512) 
- 		float X = d * ((float)((threadIdx.x) - 256));
- 		float Y = d * ((float)((blockIdx.x) - 256));
-	
-		//compute SLM phase
+ 		float X = d * (((float)(threadIdx.x) - 256.0f));
+ 		float Y = d * (((float)(blockIdx.x) - 256.0f));
+
+		//compute SLM phase by summing contribution from all spots
 		for (int k=0; k<N_spots; k++)
 		{
 			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0 * M_PI * (X * s_xm[k] + Y * s_ym[k]);
@@ -471,7 +472,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		}
 		pSLM2pi_f = atan2f(imSLM, reSLM);		
 		
-			
+	
 		if (RPC < (2.0f*M_PI))			//Apply RPC (restricted Phase Change)
 		{	
 			float pSLMstart = g_pSLMstart[idx];
@@ -481,8 +482,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 				g_pSLMstart[idx] = pSLM2pi_f;
 		}		
 
-		if (getpSLM255)					//Compute final SLM phases and write to global memory 
-		{
+		if (getpSLM255)					//Compute final SLM phases and write to global memory... 
+		{								
 			if (UseAberrationCorr_b)
 				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]);
 			if (ApplyLUT_b)
@@ -508,6 +509,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
 		}
 		else
-			g_pSLM2pi[idx] = pSLM2pi_f;	//Or write intermediate phase to global memory
+		{
+			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate phase to global memory
+		}
 	}
 }

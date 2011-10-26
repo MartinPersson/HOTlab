@@ -79,7 +79,7 @@ __global__ void LensesAndPrisms(float *g_x,
 								bool UseLUTPol_b, 
 								float *d_LUTPolCoeff_f, 
 								int N_PolCoeff);
-__global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, unsigned int N_pixels, int data_w);
+__global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, int N_pixels, int data_w);
 
 __global__ void PropagateToSLM_Fresnel(float *g_x, 
 							float *g_y, 
@@ -111,7 +111,7 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x,
 									float *g_Vre, 
 									float *g_Vim,
 									int N_spots, 
-									unsigned int n, 
+									int n, 
 									int data_w);
 
 __global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w);
