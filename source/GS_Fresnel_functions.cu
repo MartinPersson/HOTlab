@@ -130,14 +130,21 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 	
 	if (idx < data_w*data_w)
 	{
-		//get pixel coordinates 
-		float N = data_w;
+		//get pixel coordinates
+		float d = 0.001953125; //pixel pitch (1/512)
+ 		float X = d * ((float)threadIdx.x - 256.0f);	//512!
+ 		float Y = d * ((float)blockIdx.x - 256.0f);
+		
+		//change this to allow data_w!=512
+		//float X = d*((float)(idx%data_w) - (float)data_w/2.0f);
+		//float Y = d*((float)(floor((float)idx/(float)data_w)) - (float)data_w/2.0f);float N = data_w;
+		
+		/*...or to this (data_w must be a power of 2)
 		int logN = (int)log2(N);
 		int X_int = idx&(int)(N-1);
-	 	//int Y_int = (idx&(int)(N*N-1)-X_int)>>logN;
 	 	int Y_int = (idx-X_int)>>logN;
-	 	float X = (float)(X_int - (data_w>>1)) / N; //does not work for 768 pixels
- 		float Y = (float)(Y_int - (data_w>>1)) / N;
+	 	float X = (float)(X_int - (data_w>>1)) / N; //512
+ 		float Y = (float)(Y_int - (data_w>>1)) / N;*/
 		
 		float phase2pi;  // [-pi,pi]
 		float SLMre = 0;
@@ -189,7 +196,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	
 	__shared__ float s_Vre[BLOCK_SIZE];
 	__shared__ float s_Vim[BLOCK_SIZE];
-	__shared__ float s_xm, s_ym, s_zm;
+	float s_xm, s_ym, s_zm;
 
 	s_Vre[tid] = 0;
 	s_Vim[tid] = 0;
@@ -198,21 +205,22 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	int logN = (int)log2(N);
 	float d = 0.001953125;	//SLM pixel size (1/512)	512!
 	
-	if (tid == 0)
-		s_xm = g_x[spot_number];
-	if (tid == 64)
-		s_ym = g_y[spot_number];	
-	if (tid == 128)
-		s_zm = g_z[spot_number];
+
+	s_xm = g_x[spot_number];
+
+	s_ym = g_y[spot_number];	
+
+	s_zm = g_z[spot_number];
 	
 	float X1 = d * ((float)tid - 256.0);				//512!
 	float Y1 = - d * 256.0;	
-	__syncthreads();
-		
+
+	float pSLM_1;
+	float p;
 	while (i < N_pixels) 
 	{ 
-		float pSLM_1 = 2*M_PI*(float)g_pSLM_uc[i] - M_PI;
-		float p = pSLM_1 - M_PI * (s_zm * (X1*X1 + Y1*Y1) + 2 * (X1 * s_xm + Y1 * s_ym));
+		pSLM_1 = 2.0f*M_PI*(float)g_pSLM_uc[i]/255.0f - M_PI;
+		p = pSLM_1 - M_PI * (s_zm * (X1*X1 + Y1*Y1) + 2 * (X1 * s_xm + Y1 * s_ym));
 		
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
@@ -285,32 +293,38 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 	int tid = threadIdx.x;
 	int i = tid;
 	
-	__shared__ float s_Vre[BLOCK_SIZE];
+	__shared__ float s_Vre[BLOCK_SIZE];		
 	__shared__ float s_Vim[BLOCK_SIZE];
-	__shared__ float s_xm, s_ym, s_zm;
+	//__shared__ float s_xm, s_ym, s_zm;
+	float s_xm, s_ym, s_zm;
 
 	s_Vre[tid] = 0;
 	s_Vim[tid] = 0;
 		
 	float N = data_w;
 	int logN = (int)log2(N);
-	float d = 0.001953125;	//Normalized pixel pitch (1/512)
+
 	
-	if (tid == 0)
+	/*if (tid == 0)
 		s_xm = g_x[spot_number];
 	if (tid == 64)
 		s_ym = g_y[spot_number];	
 	if (tid == 128)
-		s_zm = g_z[spot_number];
-	
-	float X1 = d * ((float)tid - 256.0);
-	float Y1 = - d * 256.0;	
-	__syncthreads();
-		
+		s_zm = g_z[spot_number];*/
+
+	s_xm = g_x[spot_number];
+	s_ym = g_y[spot_number];	
+	s_zm = g_z[spot_number];
+
+	float d = 0.001953125;	//Normalized pixel pitch (1/512) 512!	
+	float X1 = d * (float)(tid - 256);	//512!
+	float Y1 = - d * 256.0f;
+	//float Y2 = - d * 255.0f;
+	float p;
+	//__syncthreads();
 	while (i < n) 
 	{ 
-		float pSLM_1 = g_pSLM2pi[i];
-		float p = pSLM_1 - M_PI * (s_zm * (X1*X1 + Y1*Y1) + 2 * (X1 * s_xm + Y1 * s_ym));
+		p = g_pSLM2pi[i] - M_PI * (s_zm * (X1*X1 + Y1*Y1) + 2.0f * (X1 * s_xm + Y1 * s_ym));
 		
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
@@ -347,8 +361,8 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 
 	if (tid == 0) 
 	{
-		g_Vre[spot_number] = s_Vre[0] / 262144.0;
-		g_Vim[spot_number] = s_Vim[0] / 262144.0;
+		g_Vre[spot_number] = s_Vre[0] / 262144.0f;
+		g_Vim[spot_number] = s_Vim[0] / 262144.0f;
 	}
 }
 
@@ -356,7 +370,7 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 ////////////////////////////////////////////////////////////////////////////////
 //Obtain phases in SLM plane
 ////////////////////////////////////////////////////////////////////////////////
-//works only for blocksize 512 and max 256 spots
+//works only for blocksize 512 and max 512 spots
 ////////////////////////////////////////////////////////////////////////////////
 __global__ void PropagateToSLM_Fresnel(float *g_x, 
 								float *g_y, 
@@ -394,7 +408,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 	{
 		//float N = 512;
 		//int logN = (int)log2(N);
-		float d = 0.001953125;		//Normalized pixel pitch (1/512)
+
 		
 		//load data to shared memory
 		if (N_spots <= 64)
@@ -448,7 +462,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			{	
 				s_aSpot_sum += s_aSpot[jj];		
 			}
-			s_a_mean = s_aSpot_sum / (float)N_spots; //integer division!!
+			s_a_mean = s_aSpot_sum / (float)N_spots;				//integer division!!
 		}
 		__syncthreads();
 	
@@ -456,17 +470,22 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		{
 			s_weight[tid] = s_weight[tid] * s_a_mean / s_aSpot[tid];	
 			g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
-			g_amps[tid + N_spots*iteration] = s_aSpot[tid];		//may be excluded, used for monitoring only
+			g_amps[tid + N_spots*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
 		}
 		__syncthreads();				
-		//get pixel coordinates (change this to allow data_w!=512) 
- 		float X = d * (((float)(threadIdx.x) - 256.0f));
- 		float Y = d * (((float)(blockIdx.x) - 256.0f));
-
+		//get pixel coordinates
+		float d = 0.001953125;										//Normalized pixel pitch (1/512) 512!
+ 		float X = d * ((float)threadIdx.x - 256.0f);				//512!
+ 		float Y = d * ((float)blockIdx.x - 256.0f);
+		
+		//change this to allow data_w!=512
+		//float X = d*((float)(idx%data_w) - (float)data_w/2.0f);
+		//float Y = d*((float)(floor((float)idx/(float)data_w)) - (float)data_w/2.0f);
+		
 		//compute SLM phase by summing contribution from all spots
 		for (int k=0; k<N_spots; k++)
 		{
-			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0 * M_PI * (X * s_xm[k] + Y * s_ym[k]);
+			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0f * M_PI * (X * s_xm[k] + Y * s_ym[k]);
 			reSLM += s_weight[k] * cosf(s_pSpot[k] + delta);
 			imSLM += s_weight[k] * sinf(s_pSpot[k] + delta);
 		}

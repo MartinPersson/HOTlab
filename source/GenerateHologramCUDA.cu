@@ -200,14 +200,14 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
-				ReplaceAmpsFFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
+				ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
 				cudaDeviceSynchronize();
 					//Transform back to SLM plane
 				cufftExecC2C(plan, d_FFTd_cc, d_SLM_cc, CUFFT_INVERSE);
 				cudaDeviceSynchronize();
 
 				// Set amplitudes in d_SLM to the laser amplitude profile
-				ReplaceAmpsSLM <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC);
+				ReplaceAmpsSLM_FFT <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC);
 				cudaDeviceSynchronize();
 			}	
 		
@@ -217,13 +217,16 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			cudaDeviceSynchronize();	
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			break;
-	//case 3: Apply corrections on h_pSLM_uc
+	//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
 	}
+
 	//load image to the PCIe hardware  SLMstuff
 	if(EnableSLM_b)
 		LoadImg(h_pSLM_uc);
 
 	//cudaMemcpy(h_test, d_aLaserDFT, memsize_SLMf, cudaMemcpyDeviceToHost);
+
+	//Handle CUDA errors
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -276,6 +279,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		d_LUTPolCoeff_f = NULL;	
 	}
 	
+	//Handle CUDA errors
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -288,7 +292,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//Enable SLM
+//Allocate GPU memory and start up SLM
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
@@ -298,6 +302,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
     maxThreads_device = deviceProp.maxThreadsPerBlock;
     
 	int MaxIterations = 1000;
+	int MaxSpots = BLOCK_SIZE;
 	data_w = SLM_SIZE;
 	N_pixels = data_w * data_w;
 	N_iterations_last = 10;
@@ -333,8 +338,9 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_SLM_cc, memsize_SLMcc);
 	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
 	
-	cudaMalloc((void**)&d_weights_start, BLOCK_SIZE*(MaxIterations+1)*sizeof(float));
-	cudaMemcpy(d_weights_start, h_weights, BLOCK_SIZE*(N_iterations_last+1)*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc((void**)&d_weights_start, MaxSpots*sizeof(float));
+	//cudaMemset(d_weights_start, 1.0f, MaxSpots*sizeof(float));
+	cudaMemcpy(d_weights_start, h_weights, MaxSpots*sizeof(float), cudaMemcpyHostToDevice);
 	float *h_aLaserFFT = (float *)malloc(memsize_SLMf);
 
 	//Open up communication to the PCIe hardware
@@ -354,6 +360,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 		ApplyLUT_b = false;
 	}
 	
+	//Display CUDA errors
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -417,5 +424,51 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	if(EnableSLM_b)
 		ShutDownSLM();
 
+	return status;
+}
+////////////////////////////////////////////////////////////////////////////////
+//Calculate amplitudes in positions given by x, y, and z from a given hologram
+////////////////////////////////////////////////////////////////////////////////
+extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps)
+{
+	float *d_xall, *d_yall, *d_zall, *d_amps_all;
+	cudaMalloc((void**)&d_xall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_yall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_zall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_amps_all, N_spots_all*sizeof(float) );
+	cudaMemcpy(d_xall, x_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
+	cudaMemcpy(d_yall, y_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
+	cudaMemcpy(d_zall, z_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);
+	
+	int N_pixels = data_w*data_w;
+	cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
+	int offset = 0;
+	bool spots_left = true;
+	int N_spots_rem = N_spots_all;
+	while (N_spots_rem > 0)
+	{
+		int N_spots = (N_spots_rem > 512) ? 512 : N_spots_rem;
+		memsize_spotsf = N_spots*sizeof(float);
+		checkAmplitudes<<< N_spots, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_amps_all+offset, N_spots, N_pixels, data_w);
+		cudaDeviceSynchronize();
+		
+		N_spots_rem -= 512;
+		offset += 512;
+	}
+	cudaMemcpy(h_amps, d_amps_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
+	
+	cudaFree(d_xall);
+	cudaFree(d_yall);
+	cudaFree(d_zall);
+	cudaFree(d_amps_all);
+	
+	status = cudaGetLastError();
+	if(status)
+	{
+		strcat(CUDAmessage, "CUDA says: ");
+		strcat(CUDAmessage,	cudaGetErrorString(status));
+		strcat(CUDAmessage,	" in function 'GetAmps'\n");
+		AfxMessageBox(CUDAmessage);
+	}
 	return status;
 }
