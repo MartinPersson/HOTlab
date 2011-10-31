@@ -92,7 +92,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 							int N_spots, 
 							float *g_weights, 
 							int iteration, 
-							float *g_pSLM_start, 
+							float *g_pSLMstart, 
 							float RPC, 
 							float *g_amps,
 							bool getpSLM255,
@@ -114,8 +114,17 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x,
 									int n, 
 									int data_w);
 
-__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w);
-__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLM_start, int N_pixels, float RPC);
+__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLMstart, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w);
+__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, int N_pixels, float RPC, 								
+									bool getpSLM255,
+									unsigned char *g_pSLM255_uc,
+									unsigned char *g_LUT, 
+									bool ApplyLUT_b, 
+									bool UseAberrationCorr_b, 
+									float *g_AberrationCorr_f, 
+									bool UseLUTPol_b, 
+									float *g_LUTPolCoeff_f, 
+									int N_PolCoeff);
 __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired);
 __global__ void XYtoIndex(float *g_x, float *g_y, int *g_spot_index, int N_spots, int data_w);
 #endif

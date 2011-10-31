@@ -19,6 +19,10 @@ The code is functional on, but not yet optimized for Fermi devices. The performa
 
 A quick start guide for the LabVIEW program is located in the "docs" folder.
 
+To use the dll compiled for use with a BNS SLM, Microsoft Visual C++ 2008 SP1 Redistributable Package may have to be installed. The Redistributable Package can be downloaded from Microsoft:
+http://www.microsoft.com/download/en/details.aspx?id=5582&WT.mc_id=MSCOM_EN_US_DLC_DETAILS_121LSUS007998
+
+
 
 Instructions for compilation and use of the GenerateHologramCUDA dll:
 

@@ -28,17 +28,17 @@
 //-compute powers of X, Y and phase2pi only once and put in registers
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w)
+__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLMstart, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w)
 {	
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int s_idx;
+	int idxShifted;
 	int X_shifted, Y_shifted;
 	int N_pixels = data_w * data_w;
 	if (idx<N_pixels)
 	{
 		float phase255;
 		float N = data_w;
-		int half_w = data_w/2;
+		int half_w = data_w>>1;
 		int logN = (int)log2(N);
 
 		//int X = idx&(int)(N-1); works only for data_w = power of 2
@@ -51,12 +51,12 @@ __global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftCom
 			if (Y < half_w)
 			{
 				Y_shifted = Y + half_w;
-				s_idx = idx + (data_w * half_w) + half_w;
+				idxShifted = idx + (data_w * half_w) + half_w;
 			}
 			else
 			{
 				Y_shifted = Y - half_w;
-				s_idx = idx - (data_w * half_w) + half_w;
+				idxShifted = idx - (data_w * half_w) + half_w;
 			}
 		}
 		else
@@ -65,12 +65,12 @@ __global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftCom
 			if (Y < half_w)
 			{
 				Y_shifted = Y + half_w;			
-				s_idx = idx + (data_w * half_w) - half_w;
+				idxShifted = idx + (data_w * half_w) - half_w;
 			}
 			else
 			{
 				Y_shifted = Y - half_w;			
-				s_idx = idx - (data_w * half_w) - half_w;
+				idxShifted = idx - (data_w * half_w) - half_w;
 			}
 		}
  		float phase = atan2f(g_cSLMcc[idx].y, g_cSLMcc[idx].x);
@@ -93,8 +93,8 @@ __global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLM_start, cufftCom
 		//}
 		__syncthreads();
 		
-		g_pSLM_start[idx] = phase;
-		g_pSLMuc[s_idx] = (unsigned char)phase255;		
+		g_pSLMstart[idx] = phase;
+		g_pSLMuc[idxShifted] = (unsigned char)phase255;		
 	}
 	__syncthreads();
 }
@@ -181,7 +181,16 @@ __global__ void c_cc2im_f(float *g_p, cufftComplex *g_c, int M)
 //reset amplitudes to ones PCR
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLM_start, int N_pixels, float RPC)
+__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, int N_pixels, float RPC, 
+								bool getpSLM255,
+								unsigned char *g_pSLM255_uc,
+								unsigned char *g_LUT, 
+								bool ApplyLUT_b, 
+								bool UseAberrationCorr_b, 
+								float *g_AberrationCorr_f, 
+								bool UseLUTPol_b, 
+								float *g_LUTPolCoeff_f, 
+								int N_PolCoeff)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	
@@ -189,31 +198,90 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 	if (idx<N_pixels)
 	{
 		float aLaser = 1.0f/(float)N_pixels;//g_aLaser[idx];
-		float pSLMstart = g_pSLM_start[idx];
+		
 		cufftComplex cAmp = g_cAmp[idx];
  		float phase = atan2f(cAmp.y, cAmp.x);
- 		
+
  		if (RPC < (2.0f*M_PI))
 		{	
-			if (fabs(phase - pSLMstart) < RPC)
-			{
-				cAmp.x = aLaser*cosf(phase);
-				cAmp.y = aLaser*sinf(phase);
+			float pSLMstart = g_pSLMstart[idx];
+			if (fabs(phase - pSLMstart) > RPC)
+				phase = pSLMstart;
+		}
+		
+		if (getpSLM255)
+		{
+			if (RPC < (2.0f*M_PI))
+				g_pSLMstart[idx] = phase;
+
+			int idxShifted;
+			int X_shifted, Y_shifted;
+			int N_pixels = data_w * data_w;
+
+			float phase255;
+			float N = (float)data_w;
+			int half_w = data_w>>1;
+			int logN = (int)log2(N);
+
+			//int X = idx&(int)(N-1); works only for data_w = power of 2
+			//int Y = (idx-X)>>logN;
+			float X = idx%data_w;
+			float Y = floor(idx/N); 		
+			if (X < half_w)
+			{	
+				X_shifted = X + half_w;
+				if (Y < half_w)
+				{
+					Y_shifted = Y + half_w;
+					idxShifted = idx + (data_w * half_w) + half_w;
+				}
+				else
+				{
+					Y_shifted = Y - half_w;
+					idxShifted = idx - (data_w * half_w) + half_w;
+				}
 			}
 			else
 			{
-				cAmp.x = aLaser*cosf(pSLMstart);
-				cAmp.y = aLaser*sinf(pSLMstart);
+				X_shifted = X - half_w;
+				if (Y < half_w)
+				{
+					Y_shifted = Y + half_w;			
+					idxShifted = idx + (data_w * half_w) - half_w;
+				}
+				else
+				{
+					Y_shifted = Y - half_w;			
+					idxShifted = idx - (data_w * half_w) - half_w;
+				}
 			}
+			
+	/*		if (LUT_on == 1)
+			{
+				__shared__ float s_c[N_LUT_coeff];
+				if (threadIdx.x <N_LUT_coeff)
+					s_c[threadIdx.x] = g_LUT_coeff[threadIdx.x];
+				__syncthreads();
+				
+				phase255 = 255.0 - (s_c[0] + s_c[1]*X_shifted + s_c[2]*Y_shifted + s_c[3]*phase2pi + s_c[4]*powf(X_shifted,2) + s_c[5]*X*Y_shifted + s_c[6]*X_shifted*phase2pi + s_c[7]*powf(Y_shifted,2) + s_c[8]*Y_shifted*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X_shifted,3) + s_c[11]*powf(X_shifted,2)*Y_shifted + s_c[12]*powf(X_shifted,2)*phase2pi + s_c[13]*X_shifted*powf(Y_shifted,2) + s_c[14]*X_shifted*Y_shifted*phase2pi + s_c[15]*X_shifted*powf(phase2pi,2) + s_c[16]*powf(Y_shifted,3) + s_c[17]*powf(Y_shifted,2)*phase2pi + s_c[18]*Y_shifted*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X_shifted,4) + s_c[21]*powf(X_shifted,3)*Y_shifted + s_c[22]*powf(X_shifted,3)*phase2pi + s_c[23]*powf(X_shifted,2)*powf(Y_shifted,2) + s_c[24]*powf(X_shifted,2)*Y_shifted*phase2pi + s_c[25]*powf(X_shifted,2)*powf(phase2pi,2) + s_c[26]*X_shifted*powf(Y_shifted,3) + s_c[27]*X_shifted*powf(Y_shifted,2)*phase2pi + s_c[28]*X_shifted*Y_shifted*powf(phase2pi,2) + s_c[29]*X_shifted*powf(phase2pi,3) + s_c[30]*powf(Y_shifted,4) + s_c[31]*powf(Y_shifted,3)*phase2pi + s_c[32]*powf(Y_shifted,2)*powf(phase2pi,2) + s_c[33]*Y_shifted*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X_shifted,5) + s_c[36]*powf(X_shifted,4)*Y_shifted + s_c[37]*powf(X_shifted,4)*phase2pi + s_c[38]*powf(X_shifted,3)*powf(Y_shifted,2) + s_c[39]*powf(X_shifted,3)*Y_shifted*phase2pi + s_c[40]*powf(X_shifted,3)*powf(phase2pi,2) + s_c[41]*powf(X_shifted,2)*powf(Y_shifted,3) + s_c[42]*powf(X_shifted,2)*powf(Y_shifted,2)*phase2pi + s_c[43]*powf(X_shifted,2)*Y_shifted*powf(phase2pi,2) + s_c[44]*powf(X_shifted,2)*powf(phase2pi,3) + s_c[45]*X_shifted*powf(Y_shifted,4) + s_c[46]*X_shifted*powf(Y_shifted,3)*phase2pi + s_c[47]*X_shifted*powf(Y_shifted,2)*powf(phase2pi,2) + s_c[48]*X_shifted*Y_shifted*powf(phase2pi,3) + s_c[49]*X_shifted*powf(phase2pi,4) + s_c[50]*powf(Y_shifted,5) + s_c[51]*powf(Y_shifted,4)*phase2pi + s_c[52]*powf(Y_shifted,3)*powf(phase2pi,2) + s_c[53]*powf(Y_shifted,2)*powf(phase2pi,3) + s_c[54]*Y_shifted*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5) + s_c[56]*powf(X_shifted,6) + s_c[57]*powf(X_shifted,5)*Y_shifted + s_c[58]*powf(X_shifted,5)*phase2pi + s_c[59]*powf(X_shifted,4)*powf(Y_shifted,2) + s_c[60]*powf(X_shifted,4)*Y_shifted*phase2pi + s_c[61]*powf(X_shifted,4)*powf(phase2pi,2) + s_c[62]*powf(X_shifted,3)*powf(Y_shifted,3) + s_c[63]*powf(X_shifted,3)*powf(Y_shifted,2)*phase2pi + s_c[64]*powf(X_shifted,3)*Y_shifted*powf(phase2pi,2) + s_c[65]*powf(X_shifted,3)*powf(phase2pi,3) + s_c[66]*powf(X_shifted,2)*powf(Y_shifted,4) + s_c[67]*powf(X_shifted,2)*powf(Y_shifted,3)*phase2pi + s_c[68]*powf(X_shifted,2)*powf(Y_shifted,2)*powf(phase2pi,2) + s_c[69]*powf(X_shifted,2)*Y_shifted*powf(phase2pi,3) + s_c[70]*powf(X_shifted,2)*powf(phase2pi,4) + s_c[71]*X_shifted*powf(Y_shifted,5) + s_c[72]*X_shifted*powf(Y_shifted,4)*phase2pi + s_c[73]*X_shifted*powf(Y_shifted,3)*powf(phase2pi,2) + s_c[74]*X_shifted*powf(Y_shifted,2)*powf(phase2pi,3) + s_c[75]*X_shifted*Y_shifted*powf(phase2pi,4) + s_c[76]*X_shifted*powf(phase2pi,5) + s_c[77]*powf(Y_shifted,6) + s_c[78]*powf(Y_shifted,5)*phase2pi + s_c[79]*powf(Y_shifted,4)*powf(phase2pi,2) + s_c[80]*powf(Y_shifted,3)*powf(phase2pi,3) + s_c[81]*powf(Y_shifted,2)*powf(phase2pi,4) + s_c[82]*Y_shifted*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6) + s_c[84]*powf(X_shifted,7) + s_c[85]*powf(X_shifted,6)*Y_shifted + s_c[86]*powf(X_shifted,6)*phase2pi + s_c[87]*powf(X_shifted,5)*powf(Y_shifted,2) + s_c[88]*powf(X_shifted,5)*Y_shifted*phase2pi + s_c[89]*powf(X_shifted,5)*powf(phase2pi,2) + s_c[90]*powf(X_shifted,4)*powf(Y_shifted,3) + s_c[91]*powf(X_shifted,4)*powf(Y_shifted,2)*phase2pi + s_c[92]*powf(X_shifted,4)*Y_shifted*powf(phase2pi,2) + s_c[93]*powf(X_shifted,4)*powf(phase2pi,3) + s_c[94]*powf(X_shifted,3)*powf(Y_shifted,4) + s_c[95]*powf(X_shifted,3)*powf(Y_shifted,3)*phase2pi + s_c[96]*powf(X_shifted,3)*powf(Y_shifted,2)*powf(phase2pi,2) + s_c[97]*powf(X_shifted,3)*Y_shifted*powf(phase2pi,3) + s_c[98]*powf(X_shifted,3)*powf(phase2pi,4) + s_c[99]*powf(X_shifted,2)*powf(Y_shifted,5) + s_c[100]*powf(X_shifted,2)*powf(Y_shifted,4)*phase2pi + s_c[101]*powf(X_shifted,2)*powf(Y_shifted,3)*powf(phase2pi,2) + s_c[102]*powf(X_shifted,2)*powf(Y_shifted,2)*powf(phase2pi,3) + s_c[103]*powf(X_shifted,2)*Y_shifted*powf(phase2pi,4) + s_c[104]*powf(X_shifted,2)*powf(phase2pi,5) + s_c[105]*X_shifted*powf(Y_shifted,6) + s_c[106]*X_shifted*powf(Y_shifted,5)*phase2pi + s_c[107]*X_shifted*powf(Y_shifted,4)*powf(phase2pi,2) + s_c[108]*X_shifted*powf(Y_shifted,3)*powf(phase2pi,3) + s_c[109]*X_shifted*powf(Y_shifted,2)*powf(phase2pi,4) + s_c[110]*X_shifted*Y_shifted*powf(phase2pi,5) + s_c[111]*X_shifted*powf(phase2pi,6) + s_c[112]*powf(Y_shifted,7) + s_c[113]*powf(Y_shifted,6)*phase2pi + s_c[114]*powf(Y_shifted,5)*powf(phase2pi,2) + s_c[115]*powf(Y_shifted,4)*powf(phase2pi,3) + s_c[116]*powf(Y_shifted,3)*powf(phase2pi,4) + s_c[117]*powf(Y_shifted,2)*powf(phase2pi,5) + s_c[118]*Y_shifted*powf(phase2pi,6) + s_c[119]*powf(phase2pi,7));
+				if (phase255 < 0)
+					phase255 = 0;	
+			}
+			else 
+			{*/
+				phase255 = 255.0 * phase2pi / (2.0 * M_PI);
+			//}
+			__syncthreads();
+			
+			g_pSLMstart[idx] = phase;
+			g_pSLMuc[idxShifted] = (unsigned char)phase255;		
 		}
 		else
 		{
-			cAmp.x = aLaser*cosf(phase);
-			cAmp.y = aLaser*sinf(phase);
-		}	
-		
-		g_cAmp[idx].x = cAmp.x;
-		g_cAmp[idx].y = cAmp.y;
+			g_cAmp[idx].x = aLaser*cosf(phase);
+			g_cAmp[idx].y = aLaser*sinf(phase);
+		}
+
 	}
 	__syncthreads();
 }

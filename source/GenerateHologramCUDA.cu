@@ -148,7 +148,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			////////////////////////////////////////////////////
 			
 			cudaMemcpy(d_weights, d_weights_start, memsize_spotsf, cudaMemcpyDeviceToDevice);
-			cudaMemcpy(d_pSLMstart_f, d_pSLM_f, memsize_SLMf, cudaMemcpyDeviceToDevice);
+			//cudaMemcpy(d_pSLMstart_f, d_pSLM_f, memsize_SLMf, cudaMemcpyDeviceToDevice);
 			
 			cudaDeviceSynchronize();
 			for (int l=0; l<N_iterations; l++)
@@ -207,12 +207,13 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 
 				// Set amplitudes in d_SLM to the laser amplitude profile
-				ReplaceAmpsSLM_FFT <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC);
+				ReplaceAmpsSLM_FFT <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC, (l==(N_iterations-1)), d_pSLM_uc, d_LUT_uc, 
+									ApplyLUT_b, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff);
 				cudaDeviceSynchronize();
 			}	
 		
 			// Calculate phases in the SLM plane   
-			getPhases<<< n_blocks_Phi, BLOCK_SIZE >>> (d_pSLM_uc, d_pSLMstart_f, d_SLM_cc, d_LUT_coeff, 0, data_w);	
+			//getPhases<<< n_blocks_Phi, BLOCK_SIZE >>> (d_pSLM_uc, d_pSLMstart_f, d_SLM_cc, d_LUT_coeff, 0, data_w);	
 			cudaMemcpy(h_weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();	
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
@@ -331,6 +332,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_pSLMstart_f, memsize_SLMf);
 	cudaMalloc((void**)&d_pSLM_uc, memsize_SLMuc);
 	cudaMemset(d_pSLM_f, 0, N_pixels*sizeof(float)); 
+	cudaMemset(d_pSLMstart_f, 0, N_pixels*sizeof(float));
 	
 	cudaMalloc((void**)&d_spot_index, BLOCK_SIZE * sizeof(int));
 	cudaMalloc((void**)&d_FFTd_cc, memsize_SLMcc);	
@@ -443,13 +445,12 @@ extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, flo
 	int N_pixels = data_w*data_w;
 	cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
 	int offset = 0;
-	bool spots_left = true;
 	int N_spots_rem = N_spots_all;
+	int N_spots_this;
 	while (N_spots_rem > 0)
 	{
-		int N_spots = (N_spots_rem > 512) ? 512 : N_spots_rem;
-		memsize_spotsf = N_spots*sizeof(float);
-		checkAmplitudes<<< N_spots, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_amps_all+offset, N_spots, N_pixels, data_w);
+		N_spots_this = (N_spots_rem > 512) ? 512 : N_spots_rem;
+		checkAmplitudes<<< N_spots_this, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_amps_all+offset, N_spots_this, N_pixels, data_w);
 		cudaDeviceSynchronize();
 		
 		N_spots_rem -= 512;
