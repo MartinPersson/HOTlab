@@ -37,136 +37,136 @@ __device__ float ApplyAberrationCorrection(float phase, float correction)
 		return (phase - (2.0f*M_PI) * floor((phase+M_PI) / (2.0f*M_PI))); //apply mod([-pi, pi], phase) 
 }
 
-__device__ unsigned char applyPolLUT(float phase2pi, int X, int Y, float *s_c, int N_PolCoeff)		
+/*__device__ unsigned char applyPolLUT(float phase2pi, float X, float Y, float *s_c, int N_PolCoeff)		
 {
-	float phase255 = 255.0f;
-
+	float phase255 = 0.0f;
+	phase2pi += M_PI;
 	switch (N_PolCoeff)	{
 		case 120:
-			phase255 -= s_c[84]*powf(X,7);
-			phase255 -= s_c[85]*powf(X,6)*Y;
-			phase255 -= s_c[86]*powf(X,6)*phase2pi;
-			phase255 -= s_c[87]*powf(X,5)*powf(Y,2);
-			phase255 -= s_c[88]*powf(X,5)*Y*phase2pi;
-			phase255 -= s_c[89]*powf(X,5)*powf(phase2pi,2);
-			phase255 -= s_c[90]*powf(X,4)*powf(Y,3);
-			phase255 -= s_c[91]*powf(X,4)*powf(Y,2)*phase2pi;
-			phase255 -= s_c[92]*powf(X,4)*Y*powf(phase2pi,2);
-			phase255 -= s_c[93]*powf(X,4)*powf(phase2pi,3);
-			phase255 -= s_c[94]*powf(X,3)*powf(Y,4);
-			phase255 -= s_c[95]*powf(X,3)*powf(Y,3)*phase2pi;
-			phase255 -= s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2);
-			phase255 -= s_c[97]*powf(X,3)*Y*powf(phase2pi,3);
-			phase255 -= s_c[98]*powf(X,3)*powf(phase2pi,4);
-			phase255 -= s_c[99]*powf(X,2)*powf(Y,5);
-			phase255 -= s_c[100]*powf(X,2)*powf(Y,4)*phase2pi;
-			phase255 -= s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2);
-			phase255 -= s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3);
-			phase255 -= s_c[103]*powf(X,2)*Y*powf(phase2pi,4);
-			phase255 -= s_c[104]*powf(X,2)*powf(phase2pi,5);
-			phase255 -= s_c[105]*X*powf(Y,6);
-			phase255 -= s_c[106]*X*powf(Y,5)*phase2pi;
-			phase255 -= s_c[107]*X*powf(Y,4)*powf(phase2pi,2);
-			phase255 -= s_c[108]*X*powf(Y,3)*powf(phase2pi,3);
-			phase255 -= s_c[109]*X*powf(Y,2)*powf(phase2pi,4);
-			phase255 -= s_c[110]*X*Y*powf(phase2pi,5);
-			phase255 -= s_c[111]*X*powf(phase2pi,6);
-			phase255 -= s_c[112]*powf(Y,7);
-			phase255 -= s_c[113]*powf(Y,6)*phase2pi;
-			phase255 -= s_c[114]*powf(Y,5)*powf(phase2pi,2);
-			phase255 -= s_c[115]*powf(Y,4)*powf(phase2pi,3);
-			phase255 -= s_c[116]*powf(Y,3)*powf(phase2pi,4);
-			phase255 -= s_c[117]*powf(Y,2)*powf(phase2pi,5);
-			phase255 -= s_c[118]*Y*powf(phase2pi,6);
-			phase255 -= s_c[119]*powf(phase2pi,7);
+			phase255 += s_c[84]*powf(X,7);
+			phase255 += s_c[85]*powf(X,6)*Y;
+			phase255 += s_c[86]*powf(X,6)*phase2pi;
+			phase255 += s_c[87]*powf(X,5)*powf(Y,2);
+			phase255 += s_c[88]*powf(X,5)*Y*phase2pi;
+			phase255 += s_c[89]*powf(X,5)*powf(phase2pi,2);
+			phase255 += s_c[90]*powf(X,4)*powf(Y,3);
+			phase255 += s_c[91]*powf(X,4)*powf(Y,2)*phase2pi;
+			phase255 += s_c[92]*powf(X,4)*Y*powf(phase2pi,2);
+			phase255 += s_c[93]*powf(X,4)*powf(phase2pi,3);
+			phase255 += s_c[94]*powf(X,3)*powf(Y,4);
+			phase255 += s_c[95]*powf(X,3)*powf(Y,3)*phase2pi;
+			phase255 += s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2);
+			phase255 += s_c[97]*powf(X,3)*Y*powf(phase2pi,3);
+			phase255 += s_c[98]*powf(X,3)*powf(phase2pi,4);
+			phase255 += s_c[99]*powf(X,2)*powf(Y,5);
+			phase255 += s_c[100]*powf(X,2)*powf(Y,4)*phase2pi;
+			phase255 += s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2);
+			phase255 += s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3);
+			phase255 += s_c[103]*powf(X,2)*Y*powf(phase2pi,4);
+			phase255 += s_c[104]*powf(X,2)*powf(phase2pi,5);
+			phase255 += s_c[105]*X*powf(Y,6);
+			phase255 += s_c[106]*X*powf(Y,5)*phase2pi;
+			phase255 += s_c[107]*X*powf(Y,4)*powf(phase2pi,2);
+			phase255 += s_c[108]*X*powf(Y,3)*powf(phase2pi,3);
+			phase255 += s_c[109]*X*powf(Y,2)*powf(phase2pi,4);
+			phase255 += s_c[110]*X*Y*powf(phase2pi,5);
+			phase255 += s_c[111]*X*powf(phase2pi,6);
+			phase255 += s_c[112]*powf(Y,7);
+			phase255 += s_c[113]*powf(Y,6)*phase2pi;
+			phase255 += s_c[114]*powf(Y,5)*powf(phase2pi,2);
+			phase255 += s_c[115]*powf(Y,4)*powf(phase2pi,3);
+			phase255 += s_c[116]*powf(Y,3)*powf(phase2pi,4);
+			phase255 += s_c[117]*powf(Y,2)*powf(phase2pi,5);
+			phase255 += s_c[118]*Y*powf(phase2pi,6);
+			phase255 += s_c[119]*powf(phase2pi,7);
 		case 84:
-			phase255 -= s_c[56]*powf(X,6);
-			phase255 -= s_c[57]*powf(X,5)*Y;
-			phase255 -= s_c[58]*powf(X,5)*phase2pi;
-			phase255 -= s_c[59]*powf(X,4)*powf(Y,2);
-			phase255 -= s_c[60]*powf(X,4)*Y*phase2pi;
-			phase255 -= s_c[61]*powf(X,4)*powf(phase2pi,2);
-			phase255 -= s_c[62]*powf(X,3)*powf(Y,3);
-			phase255 -= s_c[63]*powf(X,3)*powf(Y,2)*phase2pi;
-			phase255 -= s_c[64]*powf(X,3)*Y*powf(phase2pi,2);
-			phase255 -= s_c[65]*powf(X,3)*powf(phase2pi,3);
-			phase255 -= s_c[66]*powf(X,2)*powf(Y,4);
-			phase255 -= s_c[67]*powf(X,2)*powf(Y,3)*phase2pi;
-			phase255 -= s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2);
-			phase255 -= s_c[69]*powf(X,2)*Y*powf(phase2pi,3);
-			phase255 -= s_c[70]*powf(X,2)*powf(phase2pi,4);
-			phase255 -= s_c[71]*X*powf(Y,5);
-			phase255 -= s_c[72]*X*powf(Y,4)*phase2pi;
-			phase255 -= s_c[73]*X*powf(Y,3)*powf(phase2pi,2);
-			phase255 -= s_c[74]*X*powf(Y,2)*powf(phase2pi,3);
-			phase255 -= s_c[75]*X*Y*powf(phase2pi,4);
-			phase255 -= s_c[76]*X*powf(phase2pi,5);
-			phase255 -= s_c[77]*powf(Y,6);
-			phase255 -= s_c[78]*powf(Y,5)*phase2pi;
-			phase255 -= s_c[79]*powf(Y,4)*powf(phase2pi,2);
-			phase255 -= s_c[80]*powf(Y,3)*powf(phase2pi,3);
-			phase255 -= s_c[81]*powf(Y,2)*powf(phase2pi,4);
-			phase255 -= s_c[82]*Y*powf(phase2pi,5);
-			phase255 -= s_c[83]*powf(phase2pi,6);
+			phase255 += s_c[56]*powf(X,6);
+			phase255 += s_c[57]*powf(X,5)*Y;
+			phase255 += s_c[58]*powf(X,5)*phase2pi;
+			phase255 += s_c[59]*powf(X,4)*powf(Y,2);
+			phase255 += s_c[60]*powf(X,4)*Y*phase2pi;
+			phase255 += s_c[61]*powf(X,4)*powf(phase2pi,2);
+			phase255 += s_c[62]*powf(X,3)*powf(Y,3);
+			phase255 += s_c[63]*powf(X,3)*powf(Y,2)*phase2pi;
+			phase255 += s_c[64]*powf(X,3)*Y*powf(phase2pi,2);
+			phase255 += s_c[65]*powf(X,3)*powf(phase2pi,3);
+			phase255 += s_c[66]*powf(X,2)*powf(Y,4);
+			phase255 += s_c[67]*powf(X,2)*powf(Y,3)*phase2pi;
+			phase255 += s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2);
+			phase255 += s_c[69]*powf(X,2)*Y*powf(phase2pi,3);
+			phase255 += s_c[70]*powf(X,2)*powf(phase2pi,4);
+			phase255 += s_c[71]*X*powf(Y,5);
+			phase255 += s_c[72]*X*powf(Y,4)*phase2pi;
+			phase255 += s_c[73]*X*powf(Y,3)*powf(phase2pi,2);
+			phase255 += s_c[74]*X*powf(Y,2)*powf(phase2pi,3);
+			phase255 += s_c[75]*X*Y*powf(phase2pi,4);
+			phase255 += s_c[76]*X*powf(phase2pi,5);
+			phase255 += s_c[77]*powf(Y,6);
+			phase255 += s_c[78]*powf(Y,5)*phase2pi;
+			phase255 += s_c[79]*powf(Y,4)*powf(phase2pi,2);
+			phase255 += s_c[80]*powf(Y,3)*powf(phase2pi,3);
+			phase255 += s_c[81]*powf(Y,2)*powf(phase2pi,4);
+			phase255 += s_c[82]*Y*powf(phase2pi,5);
+			phase255 += s_c[83]*powf(phase2pi,6);
 		case 56:
-			phase255 -= s_c[35]*powf(X,5);
-			phase255 -= s_c[36]*powf(X,4)*Y;
-			phase255 -= s_c[37]*powf(X,4)*phase2pi;
-			phase255 -= s_c[38]*powf(X,3)*powf(Y,2);
-			phase255 -= s_c[39]*powf(X,3)*Y*phase2pi;
-			phase255 -= s_c[40]*powf(X,3)*powf(phase2pi,2);
-			phase255 -= s_c[41]*powf(X,2)*powf(Y,3);
-			phase255 -= s_c[42]*powf(X,2)*powf(Y,2)*phase2pi;
-			phase255 -= s_c[43]*powf(X,2)*Y*powf(phase2pi,2);
-			phase255 -= s_c[44]*powf(X,2)*powf(phase2pi,3);
-			phase255 -= s_c[45]*X*powf(Y,4);
-			phase255 -= s_c[46]*X*powf(Y,3)*phase2pi;
-			phase255 -= s_c[47]*X*powf(Y,2)*powf(phase2pi,2);
-			phase255 -= s_c[48]*X*Y*powf(phase2pi,3);
-			phase255 -= s_c[49]*X*powf(phase2pi,4);
-			phase255 -= s_c[50]*powf(Y,5);
-			phase255 -= s_c[51]*powf(Y,4)*phase2pi;
-			phase255 -= s_c[52]*powf(Y,3)*powf(phase2pi,2);
-			phase255 -= s_c[53]*powf(Y,2)*powf(phase2pi,3);
-			phase255 -= s_c[54]*Y*powf(phase2pi,4);
-			phase255 -= s_c[55]*powf(phase2pi,5);
+			phase255 += s_c[35]*powf(X,5);
+			phase255 += s_c[36]*powf(X,4)*Y;
+			phase255 += s_c[37]*powf(X,4)*phase2pi;
+			phase255 += s_c[38]*powf(X,3)*powf(Y,2);
+			phase255 += s_c[39]*powf(X,3)*Y*phase2pi;
+			phase255 += s_c[40]*powf(X,3)*powf(phase2pi,2);
+			phase255 += s_c[41]*powf(X,2)*powf(Y,3);
+			phase255 += s_c[42]*powf(X,2)*powf(Y,2)*phase2pi;
+			phase255 += s_c[43]*powf(X,2)*Y*powf(phase2pi,2);
+			phase255 += s_c[44]*powf(X,2)*powf(phase2pi,3);
+			phase255 += s_c[45]*X*powf(Y,4);
+			phase255 += s_c[46]*X*powf(Y,3)*phase2pi;
+			phase255 += s_c[47]*X*powf(Y,2)*powf(phase2pi,2);
+			phase255 += s_c[48]*X*Y*powf(phase2pi,3);
+			phase255 += s_c[49]*X*powf(phase2pi,4);
+			phase255 += s_c[50]*powf(Y,5);
+			phase255 += s_c[51]*powf(Y,4)*phase2pi;
+			phase255 += s_c[52]*powf(Y,3)*powf(phase2pi,2);
+			phase255 += s_c[53]*powf(Y,2)*powf(phase2pi,3);
+			phase255 += s_c[54]*Y*powf(phase2pi,4);
+			phase255 += s_c[55]*powf(phase2pi,5);
 		case 35:
-			phase255 -= s_c[20]*powf(X,4);
-			phase255 -= s_c[21]*powf(X,3)*Y;
-			phase255 -= s_c[22]*powf(X,3)*phase2pi;
-			phase255 -= s_c[23]*powf(X,2)*powf(Y,2);
-			phase255 -= s_c[24]*powf(X,2)*Y*phase2pi;
-			phase255 -= s_c[25]*powf(X,2)*powf(phase2pi,2);
-			phase255 -= s_c[26]*X*powf(Y,3);
-			phase255 -= s_c[27]*X*powf(Y,2)*phase2pi;
-			phase255 -= s_c[28]*X*Y*powf(phase2pi,2);
-			phase255 -= s_c[29]*X*powf(phase2pi,3);
-			phase255 -= s_c[30]*powf(Y,4);
-			phase255 -= s_c[31]*powf(Y,3)*phase2pi;
-			phase255 -= s_c[32]*powf(Y,2)*powf(phase2pi,2);
-			phase255 -= s_c[33]*Y*powf(phase2pi,3);
-			phase255 -= s_c[34]*powf(phase2pi,4);
+			phase255 += s_c[20]*powf(X,4);
+			phase255 += s_c[21]*powf(X,3)*Y;
+			phase255 += s_c[22]*powf(X,3)*phase2pi;
+			phase255 += s_c[23]*powf(X,2)*powf(Y,2);
+			phase255 += s_c[24]*powf(X,2)*Y*phase2pi;
+			phase255 += s_c[25]*powf(X,2)*powf(phase2pi,2);
+			phase255 += s_c[26]*X*powf(Y,3);
+			phase255 += s_c[27]*X*powf(Y,2)*phase2pi;
+			phase255 += s_c[28]*X*Y*powf(phase2pi,2);
+			phase255 += s_c[29]*X*powf(phase2pi,3);
+			phase255 += s_c[30]*powf(Y,4);
+			phase255 += s_c[31]*powf(Y,3)*phase2pi;
+			phase255 += s_c[32]*powf(Y,2)*powf(phase2pi,2);
+			phase255 += s_c[33]*Y*powf(phase2pi,3);
+			phase255 += s_c[34]*powf(phase2pi,4);
 		case 20:
-			phase255 -= s_c[0];
-			phase255 -= s_c[1]*X;
-			phase255 -= s_c[2]*Y;
-			phase255 -= s_c[3]*phase2pi;
-			phase255 -= s_c[4]*powf(X,2);
-			phase255 -= s_c[5]*X*Y;
-			phase255 -= s_c[6]*X*phase2pi;
-			phase255 -= s_c[7]*powf(Y,2);
-			phase255 -= s_c[8]*Y*phase2pi;
-			phase255 -= s_c[9]*powf(phase2pi,2);
-			phase255 -= s_c[10]*powf(X,3);
-			phase255 -= s_c[11]*powf(X,2)*Y;
-			phase255 -= s_c[12]*powf(X,2)*phase2pi;
-			phase255 -= s_c[13]*X*powf(Y,2);
-			phase255 -= s_c[14]*X*Y*phase2pi;
-			phase255 -= s_c[15]*X*powf(phase2pi,2);
-			phase255 -= s_c[16]*powf(Y,3);
-			phase255 -= s_c[17]*powf(Y,2)*phase2pi;
-			phase255 -= s_c[18]*Y*powf(phase2pi,2);
-			phase255 -= s_c[19]*powf(phase2pi,3);
+			phase255 += s_c[0];
+			phase255 += s_c[1]*X;
+			phase255 += s_c[2]*Y;
+			phase255 += s_c[3]*phase2pi;
+			phase255 += s_c[4]*powf(X,2);
+			phase255 += s_c[5]*X*Y;
+			phase255 += s_c[6]*X*phase2pi;
+			phase255 += s_c[7]*powf(Y,2);
+			phase255 += s_c[8]*Y*phase2pi;
+			phase255 += s_c[9]*powf(phase2pi,2);
+			phase255 += s_c[10]*powf(X,3);
+			phase255 += s_c[11]*powf(X,2)*Y;
+			phase255 += s_c[12]*powf(X,2)*phase2pi;
+			phase255 += s_c[13]*X*powf(Y,2);
+			phase255 += s_c[14]*X*Y*phase2pi;
+			phase255 += s_c[15]*X*powf(phase2pi,2);
+			phase255 += s_c[16]*powf(Y,3);
+			phase255 += s_c[17]*powf(Y,2)*phase2pi;
+			phase255 += s_c[18]*Y*powf(phase2pi,2);
+			phase255 += s_c[19]*powf(phase2pi,3);
 			break;
 		default:
 			phase255 = 0;
@@ -174,49 +174,41 @@ __device__ unsigned char applyPolLUT(float phase2pi, int X, int Y, float *s_c, i
 	}
 	if (phase255 < 0)
 		phase255 = 0;
-	return (unsigned char)phase255;
-}
-/*__device__ unsigned char applyPolLUT(float phase2pi, int X, int Y, float *s_c, int N_PolCoeff)		
-{
-	float phase255 = 0;
-	switch (N_PolCoeff)	{
-		case 120:
-			phase255 = 255.0 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5) + s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6) + s_c[84]*powf(X,7) + s_c[85]*powf(X,6)*Y + s_c[86]*powf(X,6)*phase2pi + s_c[87]*powf(X,5)*powf(Y,2) + s_c[88]*powf(X,5)*Y*phase2pi + s_c[89]*powf(X,5)*powf(phase2pi,2) + s_c[90]*powf(X,4)*powf(Y,3) + s_c[91]*powf(X,4)*powf(Y,2)*phase2pi + s_c[92]*powf(X,4)*Y*powf(phase2pi,2) + s_c[93]*powf(X,4)*powf(phase2pi,3) + s_c[94]*powf(X,3)*powf(Y,4) + s_c[95]*powf(X,3)*powf(Y,3)*phase2pi + s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2) + s_c[97]*powf(X,3)*Y*powf(phase2pi,3) + s_c[98]*powf(X,3)*powf(phase2pi,4) + s_c[99]*powf(X,2)*powf(Y,5) + s_c[100]*powf(X,2)*powf(Y,4)*phase2pi + s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2) + s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3) + s_c[103]*powf(X,2)*Y*powf(phase2pi,4) + s_c[104]*powf(X,2)*powf(phase2pi,5) + s_c[105]*X*powf(Y,6) + s_c[106]*X*powf(Y,5)*phase2pi + s_c[107]*X*powf(Y,4)*powf(phase2pi,2) + s_c[108]*X*powf(Y,3)*powf(phase2pi,3) + s_c[109]*X*powf(Y,2)*powf(phase2pi,4) + s_c[110]*X*Y*powf(phase2pi,5) + s_c[111]*X*powf(phase2pi,6) + s_c[112]*powf(Y,7) + s_c[113]*powf(Y,6)*phase2pi + s_c[114]*powf(Y,5)*powf(phase2pi,2) + s_c[115]*powf(Y,4)*powf(phase2pi,3) + s_c[116]*powf(Y,3)*powf(phase2pi,4) + s_c[117]*powf(Y,2)*powf(phase2pi,5) + s_c[118]*Y*powf(phase2pi,6) + s_c[119]*powf(phase2pi,7));
-			break;
-		case 84:
-			phase255 = 255.0 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5) + s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6));
-			break;
-		case 56:
-			phase255 = 255.0 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5));
-			break;
-		case 35:
-			phase255 = 255.0 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4));
-			break;
-		case 20:
-			phase255 = 255.0 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3));
-			break;
-		default:
-			phase255 = 0;
-			break;
-	}
-	if (phase255 < 0)
-		phase255 = 0;	
-	return (unsigned char)phase255;
+	return (unsigned char)(phase255);
 }*/
-/*__device__ unsigned char applyPolLUT(float phase2pi, int X, int Y, float *s_c, int N_PolCoeff)		
+__device__ unsigned char applyPolLUT(float phase2pi, float X, float Y, float *s_c, int N_PolCoeff)		
 {
-	float phase255 = 255.0f;
+	phase2pi += M_PI;
 	switch (N_PolCoeff)	{
 		case 120:
-			phase255 = phase255 - (s_c[84]*powf(X,7) + s_c[85]*powf(X,6)*Y + s_c[86]*powf(X,6)*phase2pi + s_c[87]*powf(X,5)*powf(Y,2) + s_c[88]*powf(X,5)*Y*phase2pi + s_c[89]*powf(X,5)*powf(phase2pi,2) + s_c[90]*powf(X,4)*powf(Y,3) + s_c[91]*powf(X,4)*powf(Y,2)*phase2pi + s_c[92]*powf(X,4)*Y*powf(phase2pi,2) + s_c[93]*powf(X,4)*powf(phase2pi,3) + s_c[94]*powf(X,3)*powf(Y,4) + s_c[95]*powf(X,3)*powf(Y,3)*phase2pi + s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2) + s_c[97]*powf(X,3)*Y*powf(phase2pi,3) + s_c[98]*powf(X,3)*powf(phase2pi,4) + s_c[99]*powf(X,2)*powf(Y,5) + s_c[100]*powf(X,2)*powf(Y,4)*phase2pi + s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2) + s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3) + s_c[103]*powf(X,2)*Y*powf(phase2pi,4) + s_c[104]*powf(X,2)*powf(phase2pi,5) + s_c[105]*X*powf(Y,6) + s_c[106]*X*powf(Y,5)*phase2pi + s_c[107]*X*powf(Y,4)*powf(phase2pi,2) + s_c[108]*X*powf(Y,3)*powf(phase2pi,3) + s_c[109]*X*powf(Y,2)*powf(phase2pi,4) + s_c[110]*X*Y*powf(phase2pi,5) + s_c[111]*X*powf(phase2pi,6) + s_c[112]*powf(Y,7) + s_c[113]*powf(Y,6)*phase2pi + s_c[114]*powf(Y,5)*powf(phase2pi,2) + s_c[115]*powf(Y,4)*powf(phase2pi,3) + s_c[116]*powf(Y,3)*powf(phase2pi,4) + s_c[117]*powf(Y,2)*powf(phase2pi,5) + s_c[118]*Y*powf(phase2pi,6) + s_c[119]*powf(phase2pi,7));
+			return (unsigned char)(s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5) + s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6) + s_c[84]*powf(X,7) + s_c[85]*powf(X,6)*Y + s_c[86]*powf(X,6)*phase2pi + s_c[87]*powf(X,5)*powf(Y,2) + s_c[88]*powf(X,5)*Y*phase2pi + s_c[89]*powf(X,5)*powf(phase2pi,2) + s_c[90]*powf(X,4)*powf(Y,3) + s_c[91]*powf(X,4)*powf(Y,2)*phase2pi + s_c[92]*powf(X,4)*Y*powf(phase2pi,2) + s_c[93]*powf(X,4)*powf(phase2pi,3) + s_c[94]*powf(X,3)*powf(Y,4) + s_c[95]*powf(X,3)*powf(Y,3)*phase2pi + s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2) + s_c[97]*powf(X,3)*Y*powf(phase2pi,3) + s_c[98]*powf(X,3)*powf(phase2pi,4) + s_c[99]*powf(X,2)*powf(Y,5) + s_c[100]*powf(X,2)*powf(Y,4)*phase2pi + s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2) + s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3) + s_c[103]*powf(X,2)*Y*powf(phase2pi,4) + s_c[104]*powf(X,2)*powf(phase2pi,5) + s_c[105]*X*powf(Y,6) + s_c[106]*X*powf(Y,5)*phase2pi + s_c[107]*X*powf(Y,4)*powf(phase2pi,2) + s_c[108]*X*powf(Y,3)*powf(phase2pi,3) + s_c[109]*X*powf(Y,2)*powf(phase2pi,4) + s_c[110]*X*Y*powf(phase2pi,5) + s_c[111]*X*powf(phase2pi,6) + s_c[112]*powf(Y,7) + s_c[113]*powf(Y,6)*phase2pi + s_c[114]*powf(Y,5)*powf(phase2pi,2) + s_c[115]*powf(Y,4)*powf(phase2pi,3) + s_c[116]*powf(Y,3)*powf(phase2pi,4) + s_c[117]*powf(Y,2)*powf(phase2pi,5) + s_c[118]*Y*powf(phase2pi,6) + s_c[119]*powf(phase2pi,7));
 		case 84:
-			phase255 = phase255 - (s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6));
+			return (unsigned char)(s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5) + s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6));
 		case 56:
-			phase255 = phase255 - (s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5));
+			return (unsigned char)(s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4) + s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5));
 		case 35:
-			phase255 = phase255 - (s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4));
+			return (unsigned char)(s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3) + s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4));
 		case 20:
-			phase255 = phase255 - (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3));
+			return (unsigned char)(s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2) + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3));
+		default:
+			return 0;
+	}
+}
+/*__device__ unsigned char applyPolLUT(float phase2pi, float X, float Y, float *s_c, int N_PolCoeff)		
+{
+	phase2pi += M_PI;
+	float phase255 = 0.0f;
+	switch (N_PolCoeff)	{
+		case 120:
+			phase255 += (s_c[84]*powf(X,7) + s_c[85]*powf(X,6)*Y + s_c[86]*powf(X,6)*phase2pi + s_c[87]*powf(X,5)*powf(Y,2) + s_c[88]*powf(X,5)*Y*phase2pi + s_c[89]*powf(X,5)*powf(phase2pi,2) + s_c[90]*powf(X,4)*powf(Y,3) + s_c[91]*powf(X,4)*powf(Y,2)*phase2pi + s_c[92]*powf(X,4)*Y*powf(phase2pi,2) + s_c[93]*powf(X,4)*powf(phase2pi,3) + s_c[94]*powf(X,3)*powf(Y,4) + s_c[95]*powf(X,3)*powf(Y,3)*phase2pi + s_c[96]*powf(X,3)*powf(Y,2)*powf(phase2pi,2) + s_c[97]*powf(X,3)*Y*powf(phase2pi,3) + s_c[98]*powf(X,3)*powf(phase2pi,4) + s_c[99]*powf(X,2)*powf(Y,5) + s_c[100]*powf(X,2)*powf(Y,4)*phase2pi + s_c[101]*powf(X,2)*powf(Y,3)*powf(phase2pi,2) + s_c[102]*powf(X,2)*powf(Y,2)*powf(phase2pi,3) + s_c[103]*powf(X,2)*Y*powf(phase2pi,4) + s_c[104]*powf(X,2)*powf(phase2pi,5) + s_c[105]*X*powf(Y,6) + s_c[106]*X*powf(Y,5)*phase2pi + s_c[107]*X*powf(Y,4)*powf(phase2pi,2) + s_c[108]*X*powf(Y,3)*powf(phase2pi,3) + s_c[109]*X*powf(Y,2)*powf(phase2pi,4) + s_c[110]*X*Y*powf(phase2pi,5) + s_c[111]*X*powf(phase2pi,6) + s_c[112]*powf(Y,7) + s_c[113]*powf(Y,6)*phase2pi + s_c[114]*powf(Y,5)*powf(phase2pi,2) + s_c[115]*powf(Y,4)*powf(phase2pi,3) + s_c[116]*powf(Y,3)*powf(phase2pi,4) + s_c[117]*powf(Y,2)*powf(phase2pi,5) + s_c[118]*Y*powf(phase2pi,6) + s_c[119]*powf(phase2pi,7));
+		case 84:
+			phase255 += (s_c[56]*powf(X,6) + s_c[57]*powf(X,5)*Y + s_c[58]*powf(X,5)*phase2pi + s_c[59]*powf(X,4)*powf(Y,2) + s_c[60]*powf(X,4)*Y*phase2pi + s_c[61]*powf(X,4)*powf(phase2pi,2) + s_c[62]*powf(X,3)*powf(Y,3) + s_c[63]*powf(X,3)*powf(Y,2)*phase2pi + s_c[64]*powf(X,3)*Y*powf(phase2pi,2) + s_c[65]*powf(X,3)*powf(phase2pi,3) + s_c[66]*powf(X,2)*powf(Y,4) + s_c[67]*powf(X,2)*powf(Y,3)*phase2pi + s_c[68]*powf(X,2)*powf(Y,2)*powf(phase2pi,2) + s_c[69]*powf(X,2)*Y*powf(phase2pi,3) + s_c[70]*powf(X,2)*powf(phase2pi,4) + s_c[71]*X*powf(Y,5) + s_c[72]*X*powf(Y,4)*phase2pi + s_c[73]*X*powf(Y,3)*powf(phase2pi,2) + s_c[74]*X*powf(Y,2)*powf(phase2pi,3) + s_c[75]*X*Y*powf(phase2pi,4) + s_c[76]*X*powf(phase2pi,5) + s_c[77]*powf(Y,6) + s_c[78]*powf(Y,5)*phase2pi + s_c[79]*powf(Y,4)*powf(phase2pi,2) + s_c[80]*powf(Y,3)*powf(phase2pi,3) + s_c[81]*powf(Y,2)*powf(phase2pi,4) + s_c[82]*Y*powf(phase2pi,5) + s_c[83]*powf(phase2pi,6));
+		case 56:
+			phase255 += (s_c[35]*powf(X,5) + s_c[36]*powf(X,4)*Y + s_c[37]*powf(X,4)*phase2pi + s_c[38]*powf(X,3)*powf(Y,2) + s_c[39]*powf(X,3)*Y*phase2pi + s_c[40]*powf(X,3)*powf(phase2pi,2) + s_c[41]*powf(X,2)*powf(Y,3) + s_c[42]*powf(X,2)*powf(Y,2)*phase2pi + s_c[43]*powf(X,2)*Y*powf(phase2pi,2) + s_c[44]*powf(X,2)*powf(phase2pi,3) + s_c[45]*X*powf(Y,4) + s_c[46]*X*powf(Y,3)*phase2pi + s_c[47]*X*powf(Y,2)*powf(phase2pi,2) + s_c[48]*X*Y*powf(phase2pi,3) + s_c[49]*X*powf(phase2pi,4) + s_c[50]*powf(Y,5) + s_c[51]*powf(Y,4)*phase2pi + s_c[52]*powf(Y,3)*powf(phase2pi,2) + s_c[53]*powf(Y,2)*powf(phase2pi,3) + s_c[54]*Y*powf(phase2pi,4) + s_c[55]*powf(phase2pi,5));
+		case 35:
+			phase255 += (s_c[20]*powf(X,4) + s_c[21]*powf(X,3)*Y + s_c[22]*powf(X,3)*phase2pi + s_c[23]*powf(X,2)*powf(Y,2) + s_c[24]*powf(X,2)*Y*phase2pi + s_c[25]*powf(X,2)*powf(phase2pi,2) + s_c[26]*X*powf(Y,3) + s_c[27]*X*powf(Y,2)*phase2pi + s_c[28]*X*Y*powf(phase2pi,2) + s_c[29]*X*powf(phase2pi,3) + s_c[30]*powf(Y,4) + s_c[31]*powf(Y,3)*phase2pi + s_c[32]*powf(Y,2)*powf(phase2pi,2) + s_c[33]*Y*powf(phase2pi,3) + s_c[34]*powf(phase2pi,4));
+		case 20:
+			phase255 += (s_c[0] + s_c[1]*X + s_c[2]*Y + s_c[3]*phase2pi + s_c[4]*powf(X,2) + s_c[5]*X*Y + s_c[6]*X*phase2pi + s_c[7]*powf(Y,2) + s_c[8]*Y*phase2pi + s_c[9]*powf(phase2pi,2));// + s_c[10]*powf(X,3) + s_c[11]*powf(X,2)*Y + s_c[12]*powf(X,2)*phase2pi + s_c[13]*X*powf(Y,2) + s_c[14]*X*Y*phase2pi + s_c[15]*X*powf(phase2pi,2) + s_c[16]*powf(Y,3) + s_c[17]*powf(Y,2)*phase2pi + s_c[18]*Y*powf(phase2pi,2) + s_c[19]*powf(phase2pi,3));
 			break;
 		default:
 			phase255 = 0;
@@ -246,6 +238,7 @@ __device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int ti
 	s_Vre[tid] += s_Vre[tid + 1];
 	s_Vim[tid] += s_Vim[tid + 1];
 }
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //Calculate hologram using "Lenses and Prisms"
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,28 +384,9 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	} 
 	__syncthreads(); 
 
-	
-	if (tid < 32) {
+	if (tid < 32) 
+		warpReduceC(s_Vre, s_Vim, tid);
 
-		s_Vre[tid] += s_Vre[tid + 32];
-		s_Vim[tid] += s_Vim[tid + 32];
-
-		s_Vre[tid] += s_Vre[tid + 16];
-		s_Vim[tid] += s_Vim[tid + 16];
-
-		s_Vre[tid] += s_Vre[tid + 8];
-		s_Vim[tid] += s_Vim[tid + 8];
-
-		s_Vre[tid] += s_Vre[tid + 4];
-		s_Vim[tid] += s_Vim[tid + 4];
-
-		s_Vre[tid] += s_Vre[tid + 2];
-		s_Vim[tid] += s_Vim[tid + 2];
-
-		s_Vre[tid] += s_Vre[tid + 1];
-		s_Vim[tid] += s_Vim[tid + 1];
-		
-	}
 	if (tid == 0) 
 	{
 		float Vre = s_Vre[0] / 262144.0;			//512!
@@ -860,7 +834,7 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 //Copy phases in desired spots
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired)
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired, bool last_iteration, bool save_amps)
 {
 	int tid = threadIdx.x;
 	int spotIndex;
@@ -871,6 +845,8 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComp
 	cufftComplex cSpotAmp;
 
 	__shared__ float weight_sum[256];
+	if ((tid>=N_spots)&&(tid<=(N_spots*2)))
+		weight_sum[tid] = 0.0f;
 
 	if (tid < N_spots)
 	{
@@ -878,7 +854,7 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComp
 		cSpotAmp = g_cSpotAmpObtained[spotIndex];
 		amp_obtained = hypotf(cSpotAmp.x, cSpotAmp.y);
 		phase = atan2f(cSpotAmp.y, cSpotAmp.x);
-		if (amp_obtained < 0.0000001)
+		if (amp_obtained < 0.0000001f)
 		{
 			amp_obtained = 1.0f/(float)N_spots;//powf(256,4);
 		}
@@ -890,14 +866,15 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComp
 				
 	if (N_spots >= 256) { if (tid < 128) { weight_sum[tid] += weight_sum[tid + 128]; } __syncthreads(); }
 	if (N_spots >= 128) { if (tid < 64) { weight_sum[tid] += weight_sum[tid + 64]; } __syncthreads(); }
+	volatile float *s_w_sum = weight_sum;
 	if (tid < 32) 
 	{
-		if (N_spots >= 64) weight_sum[tid] += weight_sum[tid + 32];
-		if (N_spots >= 32) weight_sum[tid] += weight_sum[tid + 16];
-		if (N_spots >= 16) weight_sum[tid] += weight_sum[tid + 8];
-		if (N_spots >= 8) weight_sum[tid] += weight_sum[tid + 4];
-		if (N_spots >= 4) weight_sum[tid] += weight_sum[tid + 2];
-		if (N_spots >= 2) weight_sum[tid] += weight_sum[tid + 1];
+		if (N_spots >= 64) s_w_sum[tid] += s_w_sum[tid + 32];
+		if (N_spots >= 32) s_w_sum[tid] += s_w_sum[tid + 16];
+		if (N_spots >= 16) s_w_sum[tid] += s_w_sum[tid + 8];
+		if (N_spots >= 8) s_w_sum[tid] += s_w_sum[tid + 4];
+		if (N_spots >= 4) s_w_sum[tid] += s_w_sum[tid + 2];
+		if (N_spots >= 2) s_w_sum[tid] += s_w_sum[tid + 1];
 	}
 
 	__syncthreads();
@@ -910,7 +887,10 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComp
 		cSpotAmp.y = sinf(phase) * amp_new;
 		g_cSpotAmpDesired[spotIndex] = cSpotAmp;
 		g_weight[N_spots * (iteration + 1) + tid] = weight_next;
-		g_amplitude[N_spots * (iteration) + tid] = amp_obtained;
+		if (last_iteration)
+			g_weight[tid] = weight_next;
+		if (save_amps)
+			g_amplitude[N_spots * (iteration) + tid] = amp_obtained;
 	}
 
 	__syncthreads();

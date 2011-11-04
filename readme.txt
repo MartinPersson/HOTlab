@@ -14,6 +14,7 @@ GeForce GTX 285
 GeForce GTX 480
 Geforce GS 8600M (Notebook)
 Quadro FX 5600
+GeForce GT 210
 
 The code is functional on, but not yet optimized for Fermi devices. The performance is therefore similar on GTX 285 and GTX 480 although the GTX 480 (or newer devices) is expected to be substantially faster after optimization. 
 
