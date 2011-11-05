@@ -18,7 +18,7 @@
 	</Platforms>
 	<ToolFiles>
 		<DefaultToolFile
-			FileName="cuda.rules"
+			FileName="NvCudaRuntimeApi.v4.0.rules"
 		/>
 	</ToolFiles>
 	<Configurations>
@@ -36,17 +36,10 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions="--ptxas-options=-v"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Debug="true"
-				Arch="11"
-				FastMath="true"
+				Name="Cudart Build Rule"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
-				RuntimeChecks="0"
-				Runtime="1"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -131,14 +124,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Debug="true"
-				FastMath="true"
-				Defines=""
-				Optimization="3"
-				RuntimeChecks="0"
-				Runtime="1"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -225,14 +211,12 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
+				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="0"
 				MaxRegCount="14"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -315,11 +299,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -401,16 +381,10 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Debug="true"
-				Arch="11"
-				Emulation="true"
+				Name="Cudart Build Rule"
 				PtxAsOptionV="true"
-				Defines=""
-				Optimization="0"
-				RuntimeChecks="3"
-				Runtime="1"
+				FastMath="true"
+				Optimization="3"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -485,14 +459,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Debug="true"
-				Emulation="true"
-				Defines=""
-				Optimization="0"
-				RuntimeChecks="3"
-				Runtime="1"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -569,12 +536,10 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Emulation="true"
+				Name="Cudart Build Rule"
 				PtxAsOptionV="true"
-				Defines=""
-				Optimization="2"
+				FastMath="true"
+				Optimization="3"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -648,11 +613,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				Emulation="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -729,14 +690,11 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
-				MaxRegCount="32"
+				Name="Cudart Build Rule"
+				Arch1="20"
+				Arch2="0"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -819,11 +777,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -906,14 +860,12 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
+				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="0"
 				MaxRegCount="14"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -996,11 +948,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1083,14 +1031,12 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
+				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="0"
 				MaxRegCount="14"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -1173,11 +1119,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1260,14 +1202,11 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
-				MaxRegCount="32"
+				Name="Cudart Build Rule"
+				Arch1="20"
+				Arch2="0"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -1350,11 +1289,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1437,14 +1372,11 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				AdditionalOptions=""
-				Include="$(CUDA_INC_PATH)"
-				Arch="11"
-				FastMath="true"
-				MaxRegCount="32"
+				Name="Cudart Build Rule"
+				Arch1="20"
+				Arch2="0"
 				PtxAsOptionV="true"
-				Defines=""
+				FastMath="true"
 				Optimization="3"
 			/>
 			<Tool
@@ -1527,11 +1459,7 @@
 				Name="VCCustomBuildTool"
 			/>
 			<Tool
-				Name="CUDA Build Rule"
-				Include="$(CUDA_INC_PATH);$(NVSDKCOMPUTE_ROOT)\C\common\inc"
-				FastMath="true"
-				Defines=""
-				Optimization="2"
+				Name="Cudart Build Rule"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1615,42 +1543,6 @@
 			<File
 				RelativePath=".\source\GenerateHologramCUDA_Kernel.cu"
 				>
-			</File>
-			<File
-				RelativePath=".\LoadHologramNoSLM\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Release_SM11_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM11_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
@@ -1741,6 +1633,42 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release_SM20_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramNoSLM\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Release_SM11_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM11_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool

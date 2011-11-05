@@ -182,7 +182,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//p_uc2c_cc_shift<<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
 
 			float amp_desired = N_pixels * sqrt(1.0f/(float)N_spots);	
-			cudaMemcpy(d_weights, d_weights_start, N_spots * sizeof(float), cudaMemcpyDeviceToDevice);
+
 			cudaMemset(d_FFTd_cc, 0, memsize_SLMcc);		
 			XYtoIndex <<< 1, N_spots >>>(d_x,  d_y, d_spot_index, N_spots, data_w);
 			cudaDeviceSynchronize();		
@@ -336,6 +336,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_weights_start, MaxSpots*sizeof(float));
 	//cudaMemset(d_weights_start, 1.0f, MaxSpots*sizeof(float));
 	cudaMemcpy(d_weights_start, h_weights, MaxSpots*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_weights, h_weights, MaxSpots*sizeof(float), cudaMemcpyHostToDevice);
 	float *h_aLaserFFT = (float *)malloc(memsize_SLMf);
 
 	//Open up communication to the PCIe hardware
