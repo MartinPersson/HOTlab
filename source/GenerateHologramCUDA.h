@@ -85,8 +85,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 							float *g_y, 
 							float *g_z, 
 							float *g_I, 
-							float *g_SpotsRe, 
-							float *g_SpotsIm, 
+							float *g_cSpotAmpRe, 
+							float *g_cSpotAmpIm, 
 							float *g_pSLM2pi, 
 							int N_pixels, 
 							int N_spots, 
@@ -125,6 +125,6 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 									bool UseLUTPol_b, 
 									float *g_LUTPolCoeff_f, 
 									int N_PolCoeff);
-__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired, bool last_iteration, bool save_amps);
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *d_I, bool last_iteration, bool save_amps);
 __global__ void XYtoIndex(float *g_x, float *g_y, int *g_spot_index, int N_spots, int data_w);
 #endif

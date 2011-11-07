@@ -31,10 +31,10 @@ __device__ int phase2int32(float phase2pi)
 {
 	return (int)floor((phase2pi + M_PI)*256.0f / (2.0f * M_PI));
 }
-__device__ float ApplyAberrationCorrection(float phase, float correction)
+__device__ float ApplyAberrationCorrection(float pSpot, float correction)
 {
-		phase = phase + correction;		//apply correction
-		return (phase - (2.0f*M_PI) * floor((phase+M_PI) / (2.0f*M_PI))); //apply mod([-pi, pi], phase) 
+		pSpot = pSpot + correction;		//apply correction
+		return (pSpot - (2.0f*M_PI) * floor((pSpot+M_PI) / (2.0f*M_PI))); //apply mod([-pi, pi], pSpot) 
 }
 
 /*__device__ unsigned char applyPolLUT(float phase2pi, float X, float Y, float *s_c, int N_PolCoeff)		
@@ -276,45 +276,41 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 	 	float X = (float)(X_int - (data_w>>1)) / N; //512
  		float Y = (float)(Y_int - (data_w>>1)) / N;*/
 		
-		float phase2pi;  // [-pi,pi]
+		float phase2pi;  
 		float SLMre = 0;
 		float SLMim = 0;
 				
 		for (int ii=0; ii<N_spots; ++ii)
 		{
+			//add variable phases to function call 
 			phase2pi = M_PI * s_z[ii] * (X*X + Y*Y) + 2.0 * M_PI * (X * (s_x[ii]) + Y * (s_y[ii]) );
 			SLMre = SLMre + s_a[ii] * cosf(phase2pi);
 			SLMim = SLMim + s_a[ii] * sinf(phase2pi); 
 		}
-		phase2pi = atan2f(SLMim, SLMre);	
+		phase2pi = atan2f(SLMim, SLMre);	// [-pi,pi]
 		
 		if (UseAberrationCorr_b)
 			phase2pi = ApplyAberrationCorrection(phase2pi, d_AberrationCorr_f[idx]);
-
-		if (ApplyLUT_b) 
+		
+		if (UseLUTPol_b)
 		{
-			if (!UseLUTPol_b)
-			{
-				__shared__ unsigned char s_LUT[256];
-				if (tid < 256)
-					s_LUT[tid] = g_LUT[tid];
-				__syncthreads();
-				g_SLMuc[idx] = s_LUT[phase2int32(phase2pi)];
-			}
-			else
-			{
-				__shared__ float s_LUTcoeff[120];
-				if (tid < N_PolCoeff)
-					s_LUTcoeff[tid] = d_LUTPolCoeff_f[tid];
-				__syncthreads();
-				g_SLMuc[idx] = applyPolLUT(phase2pi, X, Y, s_LUTcoeff, N_PolCoeff);
-			}
+			__shared__ float s_LUTcoeff[120];
+			if (tid < N_PolCoeff)
+				s_LUTcoeff[tid] = d_LUTPolCoeff_f[tid];
+			__syncthreads();
+			g_SLMuc[idx] = applyPolLUT(phase2pi, X, Y, s_LUTcoeff, N_PolCoeff);
+		}
+		else if (ApplyLUT_b) 
+		{
+			__shared__ unsigned char s_LUT[256];
+			if (tid < 256)
+				s_LUT[tid] = g_LUT[tid];
+			__syncthreads();
+			g_SLMuc[idx] = s_LUT[phase2int32(phase2pi)];
 		}
 		else
 			g_SLMuc[idx] = phase2uc(phase2pi);
 	}	
-	__syncthreads();
-
 }
 
 __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned char *g_pSLM_uc, float *g_amps, int N_spots, int N_pixels, int data_w)
@@ -386,9 +382,9 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 
 	if (tid == 0) 
 	{
-		float Vre = s_Vre[0] / 262144.0;			//512!
-		float Vim = s_Vim[0] / 262144.0;
-		g_amps[spot_number] = hypotf(Vim, Vre);
+		float cSpotAmpRe = s_Vre[0] / 262144.0;			//512!
+		float cSpotAmpIm = s_Vim[0] / 262144.0;
+		g_amps[spot_number] = hypotf(cSpotAmpIm, cSpotAmpRe);
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,8 +472,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 								float *g_y, 
 								float *g_z, 
 								float *g_I, 
-								float *g_SpotsRe, 
-								float *g_SpotsIm, 
+								float *g_cSpotAmpRe, 
+								float *g_cSpotAmpIm, 
 								float *g_pSLM2pi, 
 								int N_pixels, 
 								int N_spots, 
@@ -498,7 +494,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;	
-	__shared__ float s_aSpot[BLOCK_SIZE], s_a_mean, s_weight[BLOCK_SIZE], s_pSpot[BLOCK_SIZE];
+	__shared__ float s_aSpot[BLOCK_SIZE], s_aSpotsMean, s_weight[BLOCK_SIZE], s_pSpot[BLOCK_SIZE];
 	__shared__ float s_xm[BLOCK_SIZE];
 	__shared__ float s_ym[BLOCK_SIZE];
 	__shared__ float s_zm[BLOCK_SIZE];
@@ -509,48 +505,20 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		//float N = 512;
 		//int logN = (int)log2(N);
 
-		
-		//load data to shared memory
-		if (N_spots <= 64)
+		if (tid<N_spots)
 		{
-			if (tid < N_spots)
-			{
-				float Vre = g_SpotsRe[tid];
-				float Vim = g_SpotsIm[tid];
-				if (iteration == 0)
-					s_aSpot[tid] = 1.0f/sqrtf(g_I[tid]);
-				else
-					s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);		//divide by the desired amplitude for spot m
-				//s_aSpot_sum[tid] = s_aSpot[tid];
-				s_pSpot[tid] = atan2f(Vim, Vre);
-			}	
-			else if ((tid - 64) < N_spots)
-				s_weight[tid - 64] = g_weights[tid - 64 + iteration*N_spots];
-			else if ((tid - 128) < N_spots)
-				s_xm[tid - 128] = g_x[tid - 128];
-			else if ((tid - 192) < N_spots)
-				s_ym[tid - 192] = g_y[tid - 192];
-			else if ((tid - 256) < N_spots)
-				s_zm[tid - 256] = g_z[tid - 256];																	
-		}
-		else
-		{	
-			if (tid<N_spots)
-			{
-				float Vre = g_SpotsRe[tid];
-				float Vim = g_SpotsIm[tid];
-				s_pSpot[tid] = atan2f(Vim, Vre);
-				if (iteration == 0)
-					s_aSpot[tid] = 1/sqrtf(g_I[tid]);
-				else
-					s_aSpot[tid] = hypotf(Vim, Vre)/sqrtf(g_I[tid]);		//divide by the desired amplitude for spot m
-				//s_aSpot_sum[tid] = s_aSpot[tid];
-				s_weight[tid] = g_weights[tid + iteration*N_spots];
-				s_xm[tid] = g_x[tid];
-				s_ym[tid] = g_y[tid];
-				s_zm[tid] = g_z[tid];
-				
-			}
+			float cSpotAmpRe = g_cSpotAmpRe[tid];
+			float cSpotAmpIm = g_cSpotAmpIm[tid];
+			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
+			float I_desired = g_I[tid];
+			I_desired = (I_desired==0) ? 0.0001f : I_desired;
+			s_aSpot[tid] = hypotf(cSpotAmpIm, cSpotAmpRe)/sqrtf(I_desired);		//divide by the desired amplitude for spot m
+
+			//s_aSpot_sum[tid] = s_aSpot[tid];
+			s_weight[tid] = g_weights[tid + iteration*N_spots];
+			s_xm[tid] = g_x[tid];
+			s_ym[tid] = g_y[tid];
+			s_zm[tid] = g_z[tid];
 		}	
 		__syncthreads();		
 
@@ -562,14 +530,17 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			{	
 				s_aSpot_sum += s_aSpot[jj];		
 			}
-			s_a_mean = s_aSpot_sum / (float)N_spots;				//integer division!!
+			s_aSpotsMean = s_aSpot_sum / (float)N_spots;				//integer division!!
 		}
 		__syncthreads();
 	
 		if (tid<N_spots)
 		{
-			s_weight[tid] = s_weight[tid] * s_a_mean / s_aSpot[tid];	
-			g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
+			s_weight[tid] = s_weight[tid] * s_aSpotsMean / s_aSpot[tid];
+			if (getpSLM255)											//Copy weights to use as initial value next run	
+				g_weights[tid] = s_weight[tid];	
+			else
+				g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
 			g_amps[tid + N_spots*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
 		}
 		__syncthreads();				
@@ -582,7 +553,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		//float X = d*((float)(idx%data_w) - (float)data_w/2.0f);
 		//float Y = d*((float)(floor((float)idx/(float)data_w)) - (float)data_w/2.0f);
 		
-		//compute SLM phase by summing contribution from all spots
+		//compute SLM pSpot by summing contribution from all spots
 		for (int k=0; k<N_spots; k++)
 		{
 			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0f * M_PI * (X * s_xm[k] + Y * s_ym[k]);
@@ -602,35 +573,31 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		}		
 
 		if (getpSLM255)					//Compute final SLM phases and write to global memory... 
-		{								
+		{	
 			if (UseAberrationCorr_b)
 				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]);
-			if (ApplyLUT_b)
+
+			if (UseLUTPol_b)
 			{
-				if (!UseLUTPol_b)
-				{
-					__shared__ unsigned char s_LUT[256];
-					if (tid < 256)
-						s_LUT[tid] = g_LUT[tid];
-					__syncthreads();
-					g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
-				}
-				else
-				{
-					__shared__ float s_LUTcoeff[120];
-					if (tid < N_PolCoeff)
-						s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
-					__syncthreads();
-					g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff, N_PolCoeff);
-				}
+				__shared__ float s_LUTcoeff[120];
+				if (tid < N_PolCoeff)
+					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff, N_PolCoeff);
+			}
+			else if (ApplyLUT_b)
+			{
+				__shared__ unsigned char s_LUT[256];
+				if (tid < 256)
+					s_LUT[tid] = g_LUT[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
 			}
 			else
 				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
 		}
 		else
-		{
-			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate phase to global memory
-		}
+			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
 	}
 }
 
@@ -642,9 +609,9 @@ __global__ void p2c(cufftComplex *g_c, float *g_p, int M)
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx<M)
 	{
-		float phase = g_p[idx];
- 		g_c[idx].x = cosf(phase);
-		g_c[idx].y = sinf(phase);
+		float pSpot = g_p[idx];
+ 		g_c[idx].x = cosf(pSpot);
+		g_c[idx].y = sinf(pSpot);
 	}
 	__syncthreads();
 }
@@ -795,7 +762,17 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 
 			if (UseAberrationCorr_b)
 				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idxShifted]);
-			if (ApplyLUT_b)
+			
+			if (UseLUTPol_b)
+			{
+				int tid = threadIdx.x;
+				__shared__ float s_LUTcoeff[120];
+				if (tid < N_PolCoeff)
+					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+				__syncthreads();
+				g_pSLM255_uc[idxShifted] = applyPolLUT(pSLM2pi_f, d*(float)X_shifted, d*(float)Y_shifted, s_LUTcoeff, N_PolCoeff);
+			}
+			else if (ApplyLUT_b)
 			{
 				int tid = threadIdx.x;
 				if (!UseLUTPol_b)
@@ -805,14 +782,6 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 						s_LUT[tid] = g_LUT[tid];
 					__syncthreads();
 					g_pSLM255_uc[idxShifted] = s_LUT[phase2int32(pSLM2pi_f)];
-				}
-				else
-				{
-					__shared__ float s_LUTcoeff[120];
-					if (tid < N_PolCoeff)
-						s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
-					__syncthreads();
-					g_pSLM255_uc[idxShifted] = applyPolLUT(pSLM2pi_f, d*(float)X_shifted, d*(float)Y_shifted, s_LUTcoeff, N_PolCoeff);
 				}
 			}
 			else
@@ -831,63 +800,96 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 //Copy phases in desired spots
 ////////////////////////////////////////////////////////////////////////////////
 
-__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmpObtained, cufftComplex *g_cSpotAmpDesired, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float amp_desired, bool last_iteration, bool save_amps)
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_I, bool last_iteration, bool save_amps)
 {
 	int tid = threadIdx.x;
 	int spotIndex;
-	float phase;
+	float pSpot;
 	float amp_new;
-	float amp_obtained;
-	float weight_next;
-	cufftComplex cSpotAmp;
+	__shared__ float s_aSpot[BLOCK_SIZE], s_aSpotsMean;
+	float weight;
+	cufftComplex cSpotAmp_cc;
 
-	__shared__ float weight_sum[256];
-	if ((tid>=N_spots)&&(tid<=(N_spots*2)))
-		weight_sum[tid] = 0.0f;
+	//__shared__ float weight_sum[256];
+	//if ((tid>=N_spots)&&(tid<=(N_spots*2)))
+	//	weight_sum[tid] = 0.0f;
+/*if (tid<N_spots)
+		{
+			float cSpotAmpRe = g_cSpotAmpRe[tid];
+			float cSpotAmpIm = g_cSpotAmpIm[tid];
+			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
+			float I_desired = g_I[tid];
+			I_desired = (I_desired==0) ? 0.0001f : I_desired;
+			s_aSpot[tid] = hypotf(cSpotAmpIm, cSpotAmpRe)/sqrtf(I_desired);		//divide by the desired amplitude for spot m
 
+			//s_aSpot_sum[tid] = s_aSpot[tid];
+			s_weight[tid] = g_weights[tid + iteration*N_spots];
+			s_xm[tid] = g_x[tid];
+			s_ym[tid] = g_y[tid];
+			s_zm[tid] = g_z[tid];
+		}	
+		__syncthreads();		
+
+		//compute weights 
+		if  (tid==0)
+		{
+			float s_aSpot_sum = 0;
+			for (int jj=0; jj<N_spots;jj++)
+			{	
+				s_aSpot_sum += s_aSpot[jj];		
+			}
+			s_aSpotsMean = s_aSpot_sum / (float)N_spots;				//integer division!!
+		}
+		__syncthreads();
+	
+		if (tid<N_spots)
+		{
+			s_weight[tid] = s_weight[tid] * s_aSpotsMean / s_aSpot[tid];
+			if (getpSLM255)											//Copy weights to use as initial value next run	
+				g_weights[tid] = s_weight[tid];	
+			else
+				g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
+			g_amps[tid + N_spots*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
+		}*/
+	
 	if (tid < N_spots)
 	{
 		spotIndex = g_spotIndex[tid];
-		cSpotAmp = g_cSpotAmpObtained[spotIndex];
-		amp_obtained = hypotf(cSpotAmp.x, cSpotAmp.y);
-		phase = atan2f(cSpotAmp.y, cSpotAmp.x);
-		if (amp_obtained < 0.0000001f)
-		{
-			amp_obtained = 1.0f/(float)N_spots;//powf(256,4);
-		}
-		weight_next = g_weight[N_spots * (iteration) + tid] * sqrtf(amp_desired / amp_obtained);
-		weight_sum[tid] = weight_next;
+		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
+		float I_desired = g_I[tid];
+		I_desired = (I_desired==0) ? 0.0001f : I_desired;
+		//cSpotAmp_cc.x = 1;
+		//cSpotAmp_cc.y = 1;
+		s_aSpot[tid] = hypotf(cSpotAmp_cc.y, cSpotAmp_cc.x)/sqrtf(I_desired);
+		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
+		weight = g_weight[N_spots * iteration + tid];
 	}
-
 	__syncthreads();	
 				
-	if (N_spots >= 256) { if (tid < 128) { weight_sum[tid] += weight_sum[tid + 128]; } __syncthreads(); }
-	if (N_spots >= 128) { if (tid < 64) { weight_sum[tid] += weight_sum[tid + 64]; } __syncthreads(); }
-	volatile float *s_w_sum = weight_sum;
-	if (tid < 32) 
+	//compute weights 
+	if  (tid==0)
 	{
-		if (N_spots >= 64) s_w_sum[tid] += s_w_sum[tid + 32];
-		if (N_spots >= 32) s_w_sum[tid] += s_w_sum[tid + 16];
-		if (N_spots >= 16) s_w_sum[tid] += s_w_sum[tid + 8];
-		if (N_spots >= 8) s_w_sum[tid] += s_w_sum[tid + 4];
-		if (N_spots >= 4) s_w_sum[tid] += s_w_sum[tid + 2];
-		if (N_spots >= 2) s_w_sum[tid] += s_w_sum[tid + 1];
+		float aSpot_sum = 0;
+		for (int jj=0; jj<N_spots;jj++)
+		{	
+			aSpot_sum += s_aSpot[jj];		
+		}
+		s_aSpotsMean = aSpot_sum / (float)N_spots;				//integer division!!
 	}
-
 	__syncthreads();
-	
 	if (tid<N_spots)												
 	{
-		weight_next = weight_next / weight_sum[0];
-		amp_new = weight_next * amp_desired;    
-		cSpotAmp.x = cosf(phase) * amp_new;
-		cSpotAmp.y = sinf(phase) * amp_new;
-		g_cSpotAmpDesired[spotIndex] = cSpotAmp;
-		g_weight[N_spots * (iteration + 1) + tid] = weight_next;
+		weight = weight * s_aSpotsMean / s_aSpot[tid];   
+		cSpotAmp_cc.x = cosf(pSpot) * weight;
+		cSpotAmp_cc.y = sinf(pSpot) * weight;
+		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+
 		if (last_iteration)
-			g_weight[tid] = weight_next;
+			g_weight[tid] = weight;
+		else
+			g_weight[N_spots * (iteration + 1) + tid] = weight;
 		if (save_amps)
-			g_amplitude[N_spots * (iteration) + tid] = amp_obtained;
+			g_amplitude[N_spots * (iteration) + tid] = s_aSpot[tid];
 	}
 
 	__syncthreads();

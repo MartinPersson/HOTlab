@@ -43,7 +43,7 @@
 //							d = device memory
 //--In global functions:	g = global memory
 //							s = shared memory 
-//							no prefix = local memory
+//							no prefix = registers
 //-The suffix indicates the data type
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
@@ -52,8 +52,12 @@
 // (Requires all functions to be moved into the same file or the use of some 
 // workaround found on nVidia forum)  	
 //-Put pSLMstart and aLaser in texture memory
-//-Use "zero-copy" to transfer pSLM to host. (will only work on 1.3 devices and higher)
+//-Use "zero-copy" to transfer pSLM to host.
 //-Rename functions and variables for consistency and readability
+//-Check how initial weight value is set for both GS-methods. Transfer previous 
+// final weight to initial values. 
+//-Allow variable spot phases for Lenses and Prisms
+//-return Intensities instead of amplitudes
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -63,16 +67,16 @@
 //Global declaration
 //////////////////////////////////////////////////
 float *d_x, *d_y, *d_z, *d_I;					//trap coordinates and intensity in GPU memory
-float *d_pSLM_f;								//the optimized phase pattern, float [-pi, pi]
+float *d_pSLM_f;								//the optimized pSpot pattern, float [-pi, pi]
 float *d_weights, *d_weights_start, *d_amps;	//used h_weights and calculated amplitudes for each spot and each iteration
-float *d_pSLMstart_f;							//Initial phase pattern [-pi, pi]
+float *d_pSLMstart_f;							//Initial pSpot pattern [-pi, pi]
 float *d_spotRe_f, *d_spotIm_f;
 float *d_AberrationCorr_f = NULL; 
 float *d_LUTPolCoeff_f = NULL;
 int N_LUTPolCoeff = 0;
 int n_blocks_Phi, memsize_SLMf, memsize_SLMuc, memsize_spotsf, data_w, N_pixels, N_iterations_last;
 
-unsigned char *d_pSLM_uc;						//The optimized phase pattern, unsigned char, the one sent to the SLM [0, 255]
+unsigned char *d_pSLM_uc;						//The optimized pSpot pattern, unsigned char, the one sent to the SLM [0, 255]
 unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
@@ -148,7 +152,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//Genreate holgram using fresnel propagation
 			////////////////////////////////////////////////////
 			
-			cudaMemcpy(d_weights, d_weights_start, memsize_spotsf, cudaMemcpyDeviceToDevice);
+			//cudaMemcpy(d_weights, d_weights_start, memsize_spotsf, cudaMemcpyDeviceToDevice);
 			//cudaMemcpy(d_pSLMstart_f, d_pSLM_f, memsize_SLMf, cudaMemcpyDeviceToDevice);
 			
 			cudaDeviceSynchronize();
@@ -193,7 +197,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
-				ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired, (l==(N_iterations-1)), saveAmps);
+				ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_I, (l==(N_iterations-1)), saveAmps);
 				cudaDeviceSynchronize();
 					//Transform back to SLM plane
 				cufftExecC2C(plan, d_FFTd_cc, d_SLM_cc, CUFFT_INVERSE);
@@ -239,16 +243,18 @@ __global__ void testfunc(float *testdata)
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int ApplyLUT, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
-	ApplyLUT_b = (bool)ApplyLUT;
 	UseLUTPol_b = (bool)UseLUTPol;
 	int Ncoeff[5] = {20, 35, 56, 84, 120};
-	if (3<=PolOrder&&PolOrder<=7)
+	if ((3<=PolOrder)&&(PolOrder<=7))
 		N_LUTPolCoeff = Ncoeff[PolOrder - 3];
 	else
-		UseLUTPol_b = false;
+	{
+		AfxMessageBox("Polynomial order out of range\n -coerced to 3");
+		N_LUTPolCoeff = Ncoeff[0];
+	}
 
 	if(UseAberrationCorr_b)
 	{
@@ -351,10 +357,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 		delete []h_LUT_uc;
 		SetPower(true);
 	}	
-	else
-	{
-		ApplyLUT_b = false;
-	}
 	
 	//Display CUDA errors
 	status = cudaGetLastError();
