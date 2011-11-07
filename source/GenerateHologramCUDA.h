@@ -65,6 +65,8 @@ __global__ void uc2f(float *f,
 					 unsigned char *uc, 
 					 int N);
 
+__global__ void p2c(cufftComplex *g_c, float *g_p, int M);
+
 __global__ void LensesAndPrisms(float *g_x, 
 								float *g_y, 
 								float *g_z, 

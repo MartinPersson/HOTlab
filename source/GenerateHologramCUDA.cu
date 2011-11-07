@@ -211,7 +211,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		
 			// Calculate phases in the SLM plane   
 			//getPhases<<< n_blocks_Phi, BLOCK_SIZE >>> (d_pSLM_uc, d_pSLMstart_f, d_SLM_cc, d_LUT_coeff, 0, data_w);	
-			cudaMemcpy(h_weights, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(h_weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();	
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			break;
@@ -294,7 +294,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 ////////////////////////////////////////////////////////////////////////////////
 //Allocate GPU memory and start up SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId)
+extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
 	cudaSetDevice(deviceId); 
 	cudaDeviceProp deviceProp;
@@ -332,12 +332,17 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test,
 	cudaMalloc((void**)&d_pSLM_uc, memsize_SLMuc);
 	cudaMemset(d_pSLM_f, 0, N_pixels*sizeof(float)); 
 	cudaMemset(d_pSLMstart_f, 0, N_pixels*sizeof(float));
+	cudaMemcpy(d_pSLM_f, h_pSLMstart, N_pixels*sizeof(float), cudaMemcpyHostToDevice);
 	
 	cudaMalloc((void**)&d_spot_index, BLOCK_SIZE * sizeof(int));
 	cudaMalloc((void**)&d_FFTd_cc, memsize_SLMcc);	
 	cudaMalloc((void**)&d_FFTo_cc, memsize_SLMcc);
 	cudaMalloc((void**)&d_SLM_cc, memsize_SLMcc);
+	cudaDeviceSynchronize();
+	p2c <<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_f, N_pixels);
+	cudaDeviceSynchronize();
 	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
+	
 	
 	cudaMalloc((void**)&d_weights_start, MaxSpots*sizeof(float));
 	//cudaMemset(d_weights_start, 1.0f, MaxSpots*sizeof(float));

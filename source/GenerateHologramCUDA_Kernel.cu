@@ -384,7 +384,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 	{
 		float cSpotAmpRe = s_Vre[0] / 262144.0;			//512!
 		float cSpotAmpIm = s_Vim[0] / 262144.0;
-		g_amps[spot_number] = hypotf(cSpotAmpIm, cSpotAmpRe);
+		g_amps[spot_number] = hypotf(cSpotAmpRe, cSpotAmpIm);
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +512,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
 			float I_desired = g_I[tid];
 			I_desired = (I_desired==0) ? 0.0001f : I_desired;
-			s_aSpot[tid] = hypotf(cSpotAmpIm, cSpotAmpRe)/sqrtf(I_desired);		//divide by the desired amplitude for spot m
+			s_aSpot[tid] = hypotf(cSpotAmpRe, cSpotAmpIm)/sqrtf(I_desired);		//divide by the desired amplitude for spot m
 
 			//s_aSpot_sum[tid] = s_aSpot[tid];
 			s_weight[tid] = g_weights[tid + iteration*N_spots];
@@ -698,7 +698,7 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 	
 	if (idx<N_pixels)
 	{
-		float aLaser = 1.0f/(float)N_pixels;//g_aLaser[idx];
+		float aLaser = 1.0f;///(float)N_pixels;//g_aLaser[idx];
 		
 		cufftComplex cAmp = g_cAmp[idx];
  		float pSLM2pi_f = atan2f(cAmp.y, cAmp.x);
@@ -787,11 +787,8 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 			else
 				g_pSLM255_uc[idxShifted] = phase2uc(pSLM2pi_f);
 		}
-		else
-		{
-			g_cAmp[idx].x = aLaser*cosf(pSLM2pi_f);
-			g_cAmp[idx].y = aLaser*sinf(pSLM2pi_f);
-		}
+		g_cAmp[idx].x = aLaser*cosf(pSLM2pi_f);
+		g_cAmp[idx].y = aLaser*sinf(pSLM2pi_f);
 	}
 	__syncthreads();
 }
@@ -810,57 +807,14 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *
 	float weight;
 	cufftComplex cSpotAmp_cc;
 
-	//__shared__ float weight_sum[256];
-	//if ((tid>=N_spots)&&(tid<=(N_spots*2)))
-	//	weight_sum[tid] = 0.0f;
-/*if (tid<N_spots)
-		{
-			float cSpotAmpRe = g_cSpotAmpRe[tid];
-			float cSpotAmpIm = g_cSpotAmpIm[tid];
-			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
-			float I_desired = g_I[tid];
-			I_desired = (I_desired==0) ? 0.0001f : I_desired;
-			s_aSpot[tid] = hypotf(cSpotAmpIm, cSpotAmpRe)/sqrtf(I_desired);		//divide by the desired amplitude for spot m
-
-			//s_aSpot_sum[tid] = s_aSpot[tid];
-			s_weight[tid] = g_weights[tid + iteration*N_spots];
-			s_xm[tid] = g_x[tid];
-			s_ym[tid] = g_y[tid];
-			s_zm[tid] = g_z[tid];
-		}	
-		__syncthreads();		
-
-		//compute weights 
-		if  (tid==0)
-		{
-			float s_aSpot_sum = 0;
-			for (int jj=0; jj<N_spots;jj++)
-			{	
-				s_aSpot_sum += s_aSpot[jj];		
-			}
-			s_aSpotsMean = s_aSpot_sum / (float)N_spots;				//integer division!!
-		}
-		__syncthreads();
-	
-		if (tid<N_spots)
-		{
-			s_weight[tid] = s_weight[tid] * s_aSpotsMean / s_aSpot[tid];
-			if (getpSLM255)											//Copy weights to use as initial value next run	
-				g_weights[tid] = s_weight[tid];	
-			else
-				g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
-			g_amps[tid + N_spots*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
-		}*/
-	
 	if (tid < N_spots)
 	{
 		spotIndex = g_spotIndex[tid];
 		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
 		float I_desired = g_I[tid];
 		I_desired = (I_desired==0) ? 0.0001f : I_desired;
-		//cSpotAmp_cc.x = 1;
-		//cSpotAmp_cc.y = 1;
-		s_aSpot[tid] = hypotf(cSpotAmp_cc.y, cSpotAmp_cc.x)/sqrtf(I_desired);
+		s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/(262144.0f*sqrtf(I_desired));
+		s_aSpot[tid] = (s_aSpot[tid]<0.001) ? 0.001f : s_aSpot[tid];
 		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
 		weight = g_weight[N_spots * iteration + tid];
 	}
