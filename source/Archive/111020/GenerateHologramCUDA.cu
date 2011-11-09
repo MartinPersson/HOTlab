@@ -43,21 +43,16 @@
 //							d = device memory
 //--In global functions:	g = global memory
 //							s = shared memory 
-//							no prefix = registers
+//							no prefix = local memory
 //-The suffix indicates the data type
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
-//-Compensate spot intensities for distance from center of field.
 //-Put all arguments for device functions and trap positions in constant memory. 
 // (Requires all functions to be moved into the same file or the use of some 
 // workaround found on nVidia forum)  	
-//-Put pSLMstart and aLaser in texture memory
-//-Use "zero-copy" to transfer pSLM to host.
+//-Put pSLM_start and aLaser in texture memory
+//-Use "zero-copy" to transfer pSLM to host. (will only work on 1.3 devices and higher)
 //-Rename functions and variables for consistency and readability
-//-Check how initial weight value is set for both GS-methods. Transfer previous 
-// final weight to initial values. 
-//-Allow variable spot phases for Lenses and Prisms
-//-return intensities instead of amplitudes
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -67,20 +62,20 @@
 //Global declaration
 //////////////////////////////////////////////////
 float *d_x, *d_y, *d_z, *d_I;					//trap coordinates and intensity in GPU memory
-float *d_pSLM_f;								//the optimized pSpot pattern, float [-pi, pi]
-float *d_weights, *d_amps, *d_weights_start;		//used h_weights and calculated amplitudes for each spot and each iteration
-float *d_pSLMstart_f;							//Initial pSpot pattern [-pi, pi]
+float *d_pSLM_f;								//the optimized phase pattern, float
+float *d_weights, *d_weights_start, *d_amps;	//used h_weights and calculated amplitudes for each spot and each iteration
+float *d_pSLMstart_f;							//Initial phase pattern
 float *d_spotRe_f, *d_spotIm_f;
 float *d_AberrationCorr_f = NULL; 
 float *d_LUTPolCoeff_f = NULL;
 int N_LUTPolCoeff = 0;
-int n_blocks_Phi, memsize_SLMf, memsize_SLMuc, memsize_spotsf, data_w, N_pixels, N_iterations_last;
+int MaxSpots, n_blocks_Phi, memsize_SLMf, memsize_SLMuc, memsize_spotsf, data_w, N_pixels, N_iterations_last;
 
-unsigned char *d_pSLM_uc;						//The optimized pSpot pattern, unsigned char, the one sent to the SLM [0, 255]
+unsigned char *d_pSLM_uc;						//The optimized phase pattern, unsigned char, the one sent to the SLM
 unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
-bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = true;
+bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false;
 
 char CUDAmessage[100];
 cudaError_t status;
@@ -122,9 +117,9 @@ extern "C" void ShutDownSLM();
 extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_weights, float alpha, int method)
 {
 	float alpha_RPC = alpha*2.0f*M_PI;
-	if (N_spots > BLOCK_SIZE)
+	if (N_spots > MaxSpots)
 	{
-		N_spots = BLOCK_SIZE;
+		N_spots = MaxSpots;
 	}
 	else if (N_spots < 3)
 		method = 0;
@@ -150,43 +145,51 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		case 1:
 			////////////////////////////////////////////////////
 			//Genreate holgram using fresnel propagation
-			////////////////////////////////////////////////////////////////////////////
-			//Uncomment this to start with pre-calculated hologram:
-			//cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
-			//cudaDeviceSynchronize();
-			//uc2f<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
-			////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////
+			
+			cudaMemcpy(d_weights, d_weights_start, memsize_spotsf, cudaMemcpyDeviceToDevice);
+			cudaMemcpy(d_pSLMstart_f, d_pSLM_f, memsize_SLMf, cudaMemcpyDeviceToDevice);
+			
+			cudaDeviceSynchronize();
 			for (int l=0; l<N_iterations; l++)
 			{	
 				////////////////////////////////////////////////////
 				//Propagate to the farfield 
 				////////////////////////////////////////////////////				
-				PropagateToSpotPositions_Fresnel<<< N_spots, 512>>>(d_x, d_y, d_z, d_pSLM_f, d_spotRe_f, d_spotIm_f, N_spots, N_pixels, data_w);
+				transformToFarfield<<< N_spots, 512>>>(d_x, d_y, d_z, d_pSLM_f, d_spotRe_f, d_spotIm_f, N_spots, N_pixels, data_w);
 				cudaDeviceSynchronize();		
 				////////////////////////////////////////////////////
 				//Propagate to the SLM plane
 				////////////////////////////////////////////////////
-				PropagateToSLM_Fresnel<<< 512, 512 >>>(d_x, d_y, d_z, d_I, d_spotRe_f, d_spotIm_f, d_pSLM_f, N_pixels, N_spots, d_weights, l, d_pSLMstart_f, alpha_RPC, 
-					d_amps, (l==(N_iterations-1)), d_pSLM_uc, d_LUT_uc, ApplyLUT_b, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff);
+				computePhiNew<<< 512, 512 >>>(d_x, d_y, d_z, d_I, d_spotRe_f, d_spotIm_f, d_pSLM_f, N_pixels, N_spots, d_weights, l, d_pSLMstart_f, alpha_RPC, d_amps);
 				cudaDeviceSynchronize();
 			}	
+
+			f2uc<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_pSLM_f, N_pixels, d_LUT_uc, ApplyLUT_b, data_w);
 			cudaDeviceSynchronize();
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			cudaMemcpy(h_weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
-			//cudaMemcpy(h_weights, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+			//cudaMemcpy(h_weights, d_weights, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 			break;
 		case 2: 
-			////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////
 			//generate hologram using fast fourier transforms 
-			////////////////////////////////////////////////////////////////////////////////////////////
-			//Uncomment this to start with pre-calculated hologram:
+			////////////////////////////////////////////////////
 			//cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
 			//cudaDeviceSynchronize();
 			//p_uc2c_cc_shift<<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
-			////////////////////////////////////////////////////////////////////////////////////////////
-			float amp_desired = N_pixels * sqrt(1.0f/(float)N_spots);	
 
-			cudaMemset(d_FFTd_cc, 0, memsize_SLMcc);		
+			float amp_desired = N_pixels * sqrt(1.0f/(float)N_spots);
+			float weight = 1.0f/(float)N_spots;
+			for (int i=0; i < N_spots; ++i)
+			{
+				h_weights[i] = weight;
+			} 
+			cudaDeviceSynchronize();		
+			cudaMemcpy(d_weights, h_weights, N_spots * sizeof(float), cudaMemcpyHostToDevice);
+			cudaDeviceSynchronize();
+			cudaMemset(d_FFTd_cc, 0, memsize_SLMcc);
+			cudaDeviceSynchronize();		
 			XYtoIndex <<< 1, N_spots >>>(d_x,  d_y, d_spot_index, N_spots, data_w);
 			cudaDeviceSynchronize();		
 			for (int l=0; l<N_iterations; l++)
@@ -196,30 +199,30 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
-				ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_I, (l==(N_iterations-1)), saveAmps);
+				ReplaceAmpsFFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, amp_desired);
 				cudaDeviceSynchronize();
 					//Transform back to SLM plane
 				cufftExecC2C(plan, d_FFTd_cc, d_SLM_cc, CUFFT_INVERSE);
 				cudaDeviceSynchronize();
 
 				// Set amplitudes in d_SLM to the laser amplitude profile
-				ReplaceAmpsSLM_FFT <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC, (l==(N_iterations-1)), d_pSLM_uc, d_LUT_uc, 
-									ApplyLUT_b, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff);
+				ReplaceAmpsSLM <<< n_blocks_Phi, BLOCK_SIZE >>> (d_aLaserFFT, d_SLM_cc, d_pSLMstart_f, N_pixels, alpha_RPC);
 				cudaDeviceSynchronize();
 			}	
-
+		
+			// Calculate phases in the SLM plane   
+			getPhases<<< n_blocks_Phi, BLOCK_SIZE >>> (d_pSLM_uc, d_pSLMstart_f, d_SLM_cc, d_LUT_coeff, 0, data_w);	
 			cudaMemcpy(h_weights, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();	
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			break;
-	//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
+	//case 3: Apply corrections on h_pSLM_uc
 	}
-
 	//load image to the PCIe hardware  SLMstuff
 	if(EnableSLM_b)
 		LoadImg(h_pSLM_uc);
 
-	//Handle CUDA errors
+	//cudaMemcpy(h_test, d_aLaserDFT, memsize_SLMf, cudaMemcpyDeviceToHost);
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -230,22 +233,24 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	}
 	return status;
 }
-
+__global__ void testfunc(float *testdata)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	testdata[idx] = idx;
+}
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int ApplyLUT, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
+	ApplyLUT_b = (bool)ApplyLUT;
 	UseLUTPol_b = (bool)UseLUTPol;
-	int Ncoeff[5] = {20, 35, 56, 84, 120};
-	if ((3<=PolOrder)&&(PolOrder<=7))
+	int Ncoeff[5] = {20, 36, 56, 84, 120};
+	if (3<=PolOrder&&PolOrder<=7)
 		N_LUTPolCoeff = Ncoeff[PolOrder - 3];
 	else
-	{
-		AfxMessageBox("Polynomial order out of range\n -coerced to 3");
-		N_LUTPolCoeff = Ncoeff[0];
-	}
+		UseLUTPol_b = false;
 
 	if(UseAberrationCorr_b)
 	{
@@ -270,7 +275,6 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		d_LUTPolCoeff_f = NULL;	
 	}
 	
-	//Handle CUDA errors
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -279,63 +283,58 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		strcat(CUDAmessage,	" in function 'Corrections'\n");
 		AfxMessageBox(CUDAmessage);
 	}
-	return status;
+	return N_LUTPolCoeff;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//Allocate GPU memory and start up SLM
+//Enable SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
+extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *test, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
 	cudaSetDevice(deviceId); 
 	cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, deviceId);
     maxThreads_device = deviceProp.maxThreadsPerBlock;
     
+	MaxSpots = BLOCK_SIZE;
 	int MaxIterations = 1000;
-	int MaxSpots = BLOCK_SIZE;
 	data_w = SLM_SIZE;
 	N_pixels = data_w * data_w;
 	N_iterations_last = 10;
-	memsize_spotsf = BLOCK_SIZE * sizeof(float);
+	memsize_spotsf = MaxSpots * sizeof(float);
 	memsize_SLMf = N_pixels * sizeof(float);  
     memsize_SLMuc = N_pixels * sizeof(unsigned char);
 	memsize_SLMcc = N_pixels * sizeof(cufftComplex);
     n_blocks_Phi = (N_pixels/BLOCK_SIZE + (N_pixels%BLOCK_SIZE == 0 ? 0:1));
 
 	float h_weights[10000];
-	for (int i=0; i < BLOCK_SIZE; ++i)
+	for (int i=0; i < MaxSpots; ++i)
 	{
-		h_weights[i] = 1.0f;
+		h_weights[i] = 1;;
 	} 
 	//memory allocations for all methods
 	cudaMalloc((void**)&d_x, memsize_spotsf );
 	cudaMalloc((void**)&d_y, memsize_spotsf );
 	cudaMalloc((void**)&d_z, memsize_spotsf );
 	cudaMalloc((void**)&d_I, memsize_spotsf );
-	cudaMalloc((void**)&d_weights, BLOCK_SIZE*(MaxIterations+1)*sizeof(float));
-	cudaMalloc((void**)&d_weights_start, MaxSpots*sizeof(float));
-	cudaMalloc((void**)&d_amps, BLOCK_SIZE*MaxIterations*sizeof(float));
+	cudaMalloc((void**)&d_weights, MaxSpots*(MaxIterations+1)*sizeof(float));
+	cudaMalloc((void**)&d_amps, MaxSpots*MaxIterations*sizeof(float));
 	
 	cudaMalloc((void**)&d_spotRe_f, memsize_spotsf );
 	cudaMalloc((void**)&d_spotIm_f, memsize_spotsf );
 	cudaMalloc((void**)&d_pSLM_f, memsize_SLMf);
 	cudaMalloc((void**)&d_pSLMstart_f, memsize_SLMf);
 	cudaMalloc((void**)&d_pSLM_uc, memsize_SLMuc);
-	cudaMemset(d_pSLMstart_f, 0, N_pixels*sizeof(float));
-
-	cudaMemcpy(d_pSLM_f, h_pSLMstart, N_pixels*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemset(d_pSLM_f, 0, N_pixels*sizeof(float)); 
 	
-	cudaMalloc((void**)&d_spot_index, BLOCK_SIZE * sizeof(int));
+	cudaMalloc((void**)&d_spot_index, MaxSpots * sizeof(int));
 	cudaMalloc((void**)&d_FFTd_cc, memsize_SLMcc);	
 	cudaMalloc((void**)&d_FFTo_cc, memsize_SLMcc);
 	cudaMalloc((void**)&d_SLM_cc, memsize_SLMcc);
-	cudaDeviceSynchronize();
-	p2c <<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_f, N_pixels);
-	cudaDeviceSynchronize();
 	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
 	
-	cudaMemcpy(d_weights_start, h_weights, MaxSpots*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc((void**)&d_weights_start, MaxSpots*(MaxIterations+1)*sizeof(float));
+	cudaMemcpy(d_weights_start, h_weights, MaxSpots*(N_iterations_last+1)*sizeof(float), cudaMemcpyHostToDevice);
 	float *h_aLaserFFT = (float *)malloc(memsize_SLMf);
 
 	//Open up communication to the PCIe hardware
@@ -350,8 +349,11 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 		delete []h_LUT_uc;
 		SetPower(true);
 	}	
+	else
+	{
+		ApplyLUT_b = false;
+	}
 	
-	//Display CUDA errors
 	status = cudaGetLastError();
 	if(status)
 	{
@@ -416,55 +418,4 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 		ShutDownSLM();
 
 	return status;
-}
-////////////////////////////////////////////////////////////////////////////////
-//Calculate amplitudes in positions given by x, y, and z from a given hologram
-////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps)
-{
-	float *d_xall, *d_yall, *d_zall, *d_amps_all;
-	cudaMalloc((void**)&d_xall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_yall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_zall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_amps_all, N_spots_all*sizeof(float) );
-	cudaMemcpy(d_xall, x_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
-	cudaMemcpy(d_yall, y_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
-	cudaMemcpy(d_zall, z_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);
-	
-	int N_pixels = data_w*data_w;
-	cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
-	int offset = 0;
-	int N_spots_rem = N_spots_all;
-	int N_spots_this;
-	while (N_spots_rem > 0)
-	{
-		N_spots_this = (N_spots_rem > 512) ? 512 : N_spots_rem;
-		checkAmplitudes<<< N_spots_this, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_amps_all+offset, N_spots_this, N_pixels, data_w);
-		cudaDeviceSynchronize();
-		
-		N_spots_rem -= 512;
-		offset += 512;
-	}
-	cudaMemcpy(h_amps, d_amps_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
-	
-	cudaFree(d_xall);
-	cudaFree(d_yall);
-	cudaFree(d_zall);
-	cudaFree(d_amps_all);
-	
-	status = cudaGetLastError();
-	if(status)
-	{
-		strcat(CUDAmessage, "CUDA says: ");
-		strcat(CUDAmessage,	cudaGetErrorString(status));
-		strcat(CUDAmessage,	" in function 'GetAmps'\n");
-		AfxMessageBox(CUDAmessage);
-	}
-	return status;
-}
-
-__global__ void testfunc(float *testdata)
-{
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	testdata[idx] = idx;
 }
