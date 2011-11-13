@@ -232,7 +232,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -691,6 +691,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				AdditionalOptions=""
 				Arch1="20"
 				Arch2="0"
 				PtxAsOptionV="true"
@@ -710,7 +711,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -881,7 +882,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -1052,7 +1053,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -1203,6 +1204,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				AdditionalOptions="/D &quot;SM_20&quot;"
 				Arch1="20"
 				Arch2="0"
 				PtxAsOptionV="true"
@@ -1220,9 +1222,10 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="cc -DMAX_SPOTS = 512"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -1373,6 +1376,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				AdditionalOptions="/D &quot;SM_20&quot;"
 				Arch1="20"
 				Arch2="0"
 				PtxAsOptionV="true"
@@ -1390,9 +1394,10 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="cc -DMAX_SPOTS = 512"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -1541,7 +1546,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\GenerateHologramCUDA_Kernel.cu"
+				RelativePath=".\source\GenerateHologramCUDA_kernel.cu"
 				>
 			</File>
 			<File

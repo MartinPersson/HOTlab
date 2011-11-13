@@ -43,6 +43,8 @@ typedef float2 cufftComplex;
 #define M_PI 3.14159265358979323846f
 #endif
 
+
+#define MAX_SPOTS 256
 #define BLOCK_SIZE 512
 #define SLM_SIZE 512
 
@@ -86,7 +88,7 @@ __global__ void checkAmplitudes(float *g_x, float *g_y, float *g_z, unsigned cha
 __global__ void PropagateToSLM_Fresnel(float *g_x, 
 							float *g_y, 
 							float *g_z, 
-							float *g_I, 
+							float *g_desiredAmp, 
 							float *g_cSpotAmpRe, 
 							float *g_cSpotAmpIm, 
 							float *g_pSLM2pi, 
@@ -105,7 +107,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 							float *g_AberrationCorr_f, 
 							bool UseLUTPol_b, 
 							float *g_LUTPolCoeff_f, 
-							int N_PolCoeff);
+							int N_PolCoeff, 
+							bool saveAmps);
 __global__ void PropagateToSpotPositions_Fresnel(float *g_x, 
 									float *g_y, 
 									float *g_z, 

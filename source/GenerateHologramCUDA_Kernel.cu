@@ -468,58 +468,35 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 ////////////////////////////////////////////////////////////////////////////////
 //works only for blocksize 512 and max 512 spots
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSLM_Fresnel(float *g_x, float *g_y, float *g_z, float *g_I, float *g_cSpotAmpRe, float *g_cSpotAmpIm, float *g_pSLM2pi, int N_pixels, 
+__global__ void PropagateToSLM_Fresnel(float *g_x, float *g_y, float *g_z, float *g_desiredAmp, float *g_cSpotAmpRe, float *g_cSpotAmpIm, float *g_pSLM2pi, int N_pixels, 
 								int N_spots, float *g_weights, int iteration, float *g_pSLMstart, float RPC, float *g_amps,	bool getpSLM255, unsigned char *g_pSLM255_uc,
 								unsigned char *g_LUT, bool ApplyLUT_b, bool UseAberrationCorr_b, float *g_AberrationCorr_f, bool UseLUTPol_b, float *g_LUTPolCoeff_f, 
-								int N_PolCoeff)
+								int N_PolCoeff, bool saveAmps)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;	
-	__shared__ float s_aSpot[BLOCK_SIZE], s_aSpotsMean, s_weight[BLOCK_SIZE], s_pSpot[BLOCK_SIZE];
-	__shared__ float s_xm[BLOCK_SIZE];
-	__shared__ float s_ym[BLOCK_SIZE];
-	__shared__ float s_zm[BLOCK_SIZE];
+	__shared__ float s_aSpot[MAX_SPOTS], s_aSpotsMean, s_weight[MAX_SPOTS], s_pSpot[MAX_SPOTS];
+	__shared__ float s_xm[MAX_SPOTS];
+	__shared__ float s_ym[MAX_SPOTS];
+	__shared__ float s_zm[MAX_SPOTS];
 	float reSLM = 0, imSLM = 0, pSLM2pi_f = 0;
 
 	if (idx<N_pixels)
 	{
 		if (tid<N_spots)
 		{
-			if (iteration == 0)		//sanitize Idesired during first iteration and replace with its sqrt
-			{
-				__shared__ float s_Idesired[BLOCK_SIZE], s_Isum;
-				s_Idesired[tid] = g_I[tid];
-				__syncthreads();		
-				if  (tid==0)
-				{
-					s_Isum = 0;
-					for (int jj=0; jj<N_spots;jj++)
-					{	
-						s_Isum += s_Idesired[jj];		
-					}	
-				}
-				__syncthreads();
-				s_Idesired[tid] = (s_Idesired[tid]==0) ? 0.01f : sqrtf(s_Idesired[tid]/s_Isum); //desired intensities are normalized to 1
-				s_weight[tid] = s_Idesired[tid];
-				g_I[tid] = s_Idesired[tid];
-
-				float cSpotAmpRe = g_cSpotAmpRe[tid];
-				float cSpotAmpIm = g_cSpotAmpIm[tid];
-				s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
-				s_aSpot[tid] = hypotf(cSpotAmpRe, cSpotAmpIm)/s_Idesired[tid];		//divide by the desired amplitude for spot m
-				s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
-			}
+			float desiredAmp = g_desiredAmp[tid];
+			float cSpotAmpRe = g_cSpotAmpRe[tid];
+			float cSpotAmpIm = g_cSpotAmpIm[tid];
+			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
+			s_aSpot[tid] = hypotf(cSpotAmpRe, cSpotAmpIm)/desiredAmp;
+			if (iteration != 0)
+				s_weight[tid] = g_weights[tid + iteration*N_spots];
 			else
 			{
-				float Idesired = g_I[tid];
-				s_weight[tid] = g_weights[tid + iteration*N_spots];
-				float cSpotAmpRe = g_cSpotAmpRe[tid];
-				float cSpotAmpIm = g_cSpotAmpIm[tid];
-				s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
-				s_aSpot[tid] = hypotf(cSpotAmpRe, cSpotAmpIm)/Idesired;		//divide by the desired amplitude for spot m
-				//s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
-				//s_aSpot_sum[tid] = s_aSpot[tid];
-			}
+				s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
+				s_weight[tid] = desiredAmp;	
+			}	
 			s_xm[tid] = g_x[tid];
 			s_ym[tid] = g_y[tid];
 			s_zm[tid] = g_z[tid];
@@ -545,11 +522,12 @@ __global__ void PropagateToSLM_Fresnel(float *g_x, float *g_y, float *g_z, float
 				g_weights[tid + N_spots*(iteration+1)] = s_weight[tid];
 			//else
 			//	g_weights[tid] = s_weight[tid];							//Transferring weights to next run may give diverging weights 
-			g_amps[tid + N_spots*iteration] = s_aSpot[tid];				//may be excluded, used for monitoring only
+			if (saveAmps)
+				g_amps[tid + N_spots*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
 		}
 		__syncthreads();				
 		//get pixel coordinates
-		float d = 0.001953125;											//Normalized pixel pitch (1/512) 512!
+		float d = 0.001953125f;											//Normalized pixel pitch (1/512) 512!
  		float X = d * ((float)threadIdx.x - 256.0f);					//512!
  		float Y = d * ((float)blockIdx.x - 256.0f);
 		
@@ -803,50 +781,30 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 ////////////////////////////////////////////////////////////////////////////////
 //Adjust amplitudes in spot positions
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_I, bool last_iteration, bool save_amps)
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_desiredAmp, bool last_iteration, bool save_amps)
 {
 	int tid = threadIdx.x;
 	int spotIndex;
 	float pSpot;
-	__shared__ float s_aSpot[BLOCK_SIZE], s_aSpotsMean;
+	__shared__ float s_aSpot[MAX_SPOTS], s_aSpotsMean;
 	float weight;
 	cufftComplex cSpotAmp_cc;
 
-	if (tid < N_spots)
+	if (tid<N_spots)
 	{
-		if (iteration == 0)		//sanitize Idesired during first iteration and replace with its sqrt
-		{
-			__shared__ float s_Idesired[BLOCK_SIZE], s_Isum;
-			s_Idesired[tid] = g_I[tid];
-			__syncthreads();		
-			if  (tid==0)
-			{
-				s_Isum = 0;
-				for (int jj=0; jj<N_spots;jj++)
-				{	
-					s_Isum += s_Idesired[jj];		
-				}	
-			}
-			__syncthreads();
-			s_Idesired[tid] = (s_Idesired[tid]==0) ? 0.01f : sqrtf(s_Idesired[tid]/s_Isum); //desired intensities are normalized to 1
-			weight = s_Idesired[tid];
-			g_I[tid] = s_Idesired[tid];
-
-			spotIndex = g_spotIndex[tid];
-			cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
-			pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
-			s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/(262144.0f*s_Idesired[tid]);		//divide by the desired amplitude for spot m
-			s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
-		}
+		float desiredAmp = g_desiredAmp[tid];
+		spotIndex = g_spotIndex[tid];
+		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
+		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
+		s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/(262144.0f*desiredAmp);
+		if (iteration != 0)
+			weight = g_weight[tid + iteration*N_spots];
 		else
 		{
-			spotIndex = g_spotIndex[tid];
-			cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
-			s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/(262144.0f*g_I[tid]);
-			pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
-			weight = g_weight[N_spots * iteration + tid];
-		}
-	}
+			s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
+			weight = desiredAmp;	
+		}	
+	}	
 	__syncthreads();	
 				
 	//compute weights 
@@ -921,10 +879,10 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;	
-	__shared__ float s_aSpot[BLOCK_SIZE], s_aSpotsMean, s_weight[BLOCK_SIZE], s_pSpot[BLOCK_SIZE];
-	__shared__ float s_xm[BLOCK_SIZE];
-	__shared__ float s_ym[BLOCK_SIZE];
-	__shared__ float s_zm[BLOCK_SIZE];
+	__shared__ float s_aSpot[MAX_SPOTS], s_aSpotsMean, s_weight[MAX_SPOTS], s_pSpot[MAX_SPOTS];
+	__shared__ float s_xm[MAX_SPOTS];
+	__shared__ float s_ym[MAX_SPOTS];
+	__shared__ float s_zm[MAX_SPOTS];
 	float reSLM = 0, imSLM = 0, pSLM2pi_f = 0;
 	__shared__ float s_weights_sum;
 	if (idx<N_pixels)
