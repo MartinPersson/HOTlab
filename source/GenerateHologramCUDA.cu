@@ -47,17 +47,15 @@
 //-The suffix indicates the data type
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
+//-Improve convergence of the GS algorithms for 2 spots.
 //-Compensate spot intensities for distance from center of field.
 //-Put all arguments for device functions and trap positions in constant memory. 
 // (Requires all functions to be moved into the same file or the use of some 
 // workaround found on nVidia forum)  	
-//-Put pSLMstart and aLaser in texture memory
+//-Put pSLMstart and aLaser in texture memory (may not improve performance on Fermi devices)
 //-Use "zero-copy" to transfer pSLM to host.
 //-Rename functions and variables for consistency and readability
-//-Check how initial weight value is set for both GS-methods. Transfer previous 
-// final weight to initial values. 
 //-Allow variable spot phases for Lenses and Prisms
-//-return intensities instead of amplitudes
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -80,7 +78,7 @@ unsigned char *d_pSLM_uc;						//The optimized pSpot pattern, unsigned char, the
 unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
-bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = false;
+bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = true;
 
 char CUDAmessage[100];
 cudaError_t status;
@@ -299,7 +297,16 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
-	cudaSetDevice(deviceId); 
+	//Make sure GPU with desired deviceId exists, set deviceId to 0 if not
+	int deviceCount=0;
+	if (cudaGetDeviceCount(&deviceCount)!=0)
+		AfxMessageBox("No CUDA compatible hardware found");
+	if (deviceId>=deviceCount)
+	{
+		AfxMessageBox("Invalid deviceId, GPU with deviceId 0 used");
+		deviceId=0;
+	}
+	cudaSetDevice(deviceId);
 	cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, deviceId);
     maxThreads_device = deviceProp.maxThreadsPerBlock;
@@ -314,11 +321,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	memsize_SLMcc = N_pixels * sizeof(cufftComplex);
     n_blocks_Phi = (N_pixels/BLOCK_SIZE + (N_pixels%BLOCK_SIZE == 0 ? 0:1));
 
-	//float h_weights[10000];
-	//for (int i=0; i < MAX_SPOTS; ++i)
-	//{
-	//	h_weights[i] = 1.0f;
-	//} 
 	//memory allocations for all methods
 	cudaMalloc((void**)&d_x, memsize_spotsf );
 	cudaMalloc((void**)&d_y, memsize_spotsf );
@@ -337,6 +339,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 
 	cudaMemcpy(d_pSLM_f, h_pSLMstart, N_pixels*sizeof(float), cudaMemcpyHostToDevice);
 	
+	//memory allocations etc. for all FFT based Gerchberg-Saxton
 	cudaMalloc((void**)&d_spot_index, MAX_SPOTS * sizeof(int));
 	cudaMalloc((void**)&d_FFTd_cc, memsize_SLMcc);	
 	cudaMalloc((void**)&d_FFTo_cc, memsize_SLMcc);
@@ -346,7 +349,6 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	cudaDeviceSynchronize();
 	cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C);
 	
-	//cudaMemcpy(d_weights_start, h_weights, MAX_SPOTS*sizeof(float), cudaMemcpyHostToDevice);
 	float *h_aLaserFFT = (float *)malloc(memsize_SLMf);
 
 	//Open up communication to the PCIe hardware
@@ -354,7 +356,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	if(EnableSLM_b)
 	{
 		bool bRAMWriteEnable = false;
-		h_LUT_uc = new unsigned char[256];
+		h_LUT_uc = new unsigned char[256]; //change this for use with 16-bit interfaces
 		ApplyLUT_b = (bool)InitalizeSLM(bRAMWriteEnable, LUTFile, h_LUT_uc, TrueFrames);  //InitalizeSLM returns 1 if PCI version is installed, PCIe version returns 0 since it applies LUT in hardware 
 		cudaMalloc((void**)&d_LUT_uc, 256);
 		cudaMemcpy(d_LUT_uc, h_LUT_uc, 256, cudaMemcpyHostToDevice);

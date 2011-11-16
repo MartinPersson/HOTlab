@@ -786,7 +786,7 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *
 	int tid = threadIdx.x;
 	int spotIndex;
 	float pSpot;
-	__shared__ float s_aSpot[MAX_SPOTS], s_aSpotsMean;
+	__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
 	float weight;
 	cufftComplex cSpotAmp_cc;
 
@@ -810,17 +810,17 @@ __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *
 	//compute weights 
 	if  (tid==0)
 	{
-		float aSpot_sum = 0;
+		float ISpot_sum = 0;
 		for (int jj=0; jj<N_spots;jj++)
 		{	
-			aSpot_sum += s_aSpot[jj];		
+			ISpot_sum += s_aSpot[jj]*s_aSpot[jj];		
 		}
-		s_aSpotsMean = aSpot_sum / (float)N_spots;				//integer division!!
+		s_ISpotsMeanSq = sqrtf(ISpot_sum / (float)N_spots);				//integer division!!
 	}
 	__syncthreads();
 	if (tid<N_spots)												
 	{
-		weight = weight * s_aSpotsMean / s_aSpot[tid];   
+		weight = weight * s_ISpotsMeanSq / s_aSpot[tid];   
 		cSpotAmp_cc.x = cosf(pSpot) * weight;
 		cSpotAmp_cc.y = sinf(pSpot) * weight;
 		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;

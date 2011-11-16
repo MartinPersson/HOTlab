@@ -24,7 +24,7 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)/test"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
@@ -202,6 +202,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -251,6 +252,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib Nafxcw.lib Libcmt.lib"
+				Version=""
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
@@ -369,7 +371,7 @@
 		</Configuration>
 		<Configuration
 			Name="EmuDebug|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)/test"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
@@ -524,7 +526,7 @@
 		</Configuration>
 		<Configuration
 			Name="EmuRelease|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)/test"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
@@ -681,6 +683,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -852,6 +855,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -1023,6 +1027,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -1194,6 +1199,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -1366,6 +1372,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -1550,6 +1557,42 @@
 				>
 			</File>
 			<File
+				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Release_SM11_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM11_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 				<FileConfiguration
@@ -1645,42 +1688,6 @@
 					/>
 				</FileConfiguration>
 			</File>
-			<File
-				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Release_SM11_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM11_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -1697,6 +1704,10 @@
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
+			<File
+				RelativePath=".\GenerateHologramCUDA.rc"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\COPYING.LESSER.txt"
@@ -1712,5 +1723,25 @@
 		</File>
 	</Files>
 	<Globals>
+		<Global
+			Name="BuildVersion_BuildAction"
+			Value="ReBuild"
+		/>
+		<Global
+			Name="BuildVersion_BuildVersioningStyle"
+			Value="None.None.Increment.None"
+		/>
+		<Global
+			Name="BuildVersion_StartDate"
+			Value="2011/11/15"
+		/>
+		<Global
+			Name="BuildVersion_UpdateAssemblyVersion"
+			Value="True"
+		/>
+		<Global
+			Name="BuildVersion_UpdateFileVersion"
+			Value="True"
+		/>
 	</Globals>
 </VisualStudioProject>
