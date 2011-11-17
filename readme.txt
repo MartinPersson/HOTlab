@@ -1,6 +1,10 @@
-HOTlab - free and open source software for holographic optical tweezers
+HOTlab - free and open source software for Holographic Optical Tweezers (HOT)
 
-The project consists of two parts: a dll written in CUDA that generates holograms on CUDA suported GPUs and a GUI program written in LabVIEW. The dll is licensed under LGPL and the LabVIEW programs under GPL.
+The project consists of two parts: 
+1. GenerateHologramCUDA.dll - a dll written in C for CUDA which generates holograms on CUDA suported GPUs.
+2. Martins HOT interface - a GUI program for HOT applications written in LabVIEW. 
+
+The dll is licensed under LGPL and the LabVIEW programs under GPL.
 
 The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface. By default, the LabVIEW program links to the dll compiled for PCIe based SLMs. To change to a PCI based SLM, just copy and replace GenerateHologramCUDA.dll with the on located in the LabVIEW\GenerateHologramCUDA_PCI folder. 
 
@@ -12,13 +16,14 @@ The program requires CUDA to be installed and of course a CUDA enabled GPU.Funct
 
 GeForce GTX 285
 GeForce GTX 480
+GeForce GTX 580
 Geforce GS 8600M (Notebook)
 Quadro FX 5600
 GeForce GT 210
 
-The code is functional on, but not yet optimized for Fermi devices. The performance is therefore similar on GTX 285 and GTX 480 although the GTX 480 (or newer devices) is expected to be substantially faster after optimization. 
+The code is functional on, but not yet optimized for Fermi devices.
 
-A quick start guide for the LabVIEW program is located in the "docs" folder.
+A quick start guide for the LabVIEW program is located in the "doc" folder along with a detailed description of GenerateHologramCUDA.dll
 
 To use the dll compiled for use with a BNS SLM, Microsoft Visual C++ 2008 SP1 Redistributable Package may have to be installed. The Redistributable Package can be downloaded from Microsoft:
 http://www.microsoft.com/download/en/details.aspx?id=5582&WT.mc_id=MSCOM_EN_US_DLC_DETAILS_121LSUS007998
