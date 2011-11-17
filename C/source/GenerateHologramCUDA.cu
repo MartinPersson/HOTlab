@@ -78,7 +78,7 @@ unsigned char *d_pSLM_uc;						//The optimized pSpot pattern, unsigned char, the
 unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
-bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = true;
+bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = false;
 
 char CUDAmessage[100];
 cudaError_t status;
@@ -244,10 +244,11 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
 	UseLUTPol_b = (bool)UseLUTPol;
+	saveAmps = (bool)saveAmplitudes;
 	int Ncoeff[5] = {20, 35, 56, 84, 120};
 	if ((3<=PolOrder)&&(PolOrder<=7))
 		N_LUTPolCoeff = Ncoeff[PolOrder - 3];
