@@ -4,15 +4,10 @@ The project consists of two parts:
 1. GenerateHologramCUDA.dll - a dll written in C for CUDA which generates holograms on CUDA suported GPUs.
 2. Martins HOT interface - a GUI program for HOT applications written in LabVIEW. 
 
+A quick start guide for the LabVIEW program is located in the "doc" folder along with a detailed description of GenerateHologramCUDA.dll
 The dll is licensed under LGPL and the LabVIEW programs under GPL.
 
-The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface. By default, the LabVIEW program links to the dll compiled for PCIe based SLMs. To change to a PCI based SLM, just copy and replace GenerateHologramCUDA.dll with the on located in the LabVIEW\GenerateHologramCUDA_PCI folder. 
-
-The LabVIEW program acquires and displays microscope images in which traps can be positioned and controlled directly. This requires NI Vision Acquisition software to be installed along with a camera connected with firewire, GigE or Camera Link. 
-
-Functions for particle tracking are included but requires the NI Vision Development Module to be installed. Those functions are therefore disabled by default. 
-
-The program requires CUDA to be installed and of course a CUDA enabled GPU.Functionaliy has been verified on the following GPUs from Nvidia: 
+The program requires CUDA to be installed and of course a CUDA enabled GPU. Functionaliy has been verified on the following GPUs from Nvidia: 
 
 GeForce GTX 285
 GeForce GTX 480
@@ -21,13 +16,15 @@ Geforce GS 8600M (Notebook)
 Quadro FX 5600
 GeForce GT 210
 
-The code is functional on, but not yet optimized for Fermi devices.
+The main program, called "Martins HOT interface.vi", is located in the LabVIEW folder along with "GenerateHologramCUDA.dll". GenerateHologramCUDA.dll can be compiled for use with SLM:s connected to a PCI or PCIe interface or for use with no SLM installed. By default, the LabVIEW program links to the dll compiled for PCIe based SLMs. To change to another version, just copy and replace GenerateHologramCUDA.dll with the dll located in  \GenerateHologramCUDA_dll\SM[XX]_[YYYY]SLM. [XX] indicates which "Compute capability" the dll is optimized for and [YYYY] indicates the type of SLM interface. To determine the compute capability of your GPU, check http://developer.nvidia.com/cuda-gpus 
 
-A quick start guide for the LabVIEW program is located in the "doc" folder along with a detailed description of GenerateHologramCUDA.dll
+The LabVIEW program acquires and displays microscope images in which traps can be positioned and controlled directly. This requires NI Vision Acquisition software to be installed along with a camera connected with firewire, GigE or Camera Link. 
+
+Functions for particle tracking are included but requires the NI Vision Development Module to be installed. Those functions are therefore disabled by default. 
+
 
 To use the dll compiled for use with a BNS SLM, Microsoft Visual C++ 2008 SP1 Redistributable Package may have to be installed. The Redistributable Package can be downloaded from Microsoft:
 http://www.microsoft.com/download/en/details.aspx?id=5582&WT.mc_id=MSCOM_EN_US_DLC_DETAILS_121LSUS007998
-
 
 
 Instructions for compilation and use of the GenerateHologramCUDA dll:

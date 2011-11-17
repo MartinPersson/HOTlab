@@ -79,7 +79,7 @@ unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
 bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UseLUTPol_b = false, saveAmps = false;
-
+float alpha_RPC = 10;
 char CUDAmessage[100];
 cudaError_t status;
 
@@ -117,9 +117,8 @@ void computeAmps(float *h_I, float *h_amp, int N_spots);
 //The main function, generates a hologram 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, float alpha, int method)
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method)
 {
-	float alpha_RPC = alpha*2.0f*M_PI;
 	if (N_spots > MAX_SPOTS)
 	{
 		N_spots = MAX_SPOTS;
@@ -244,11 +243,12 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
 	UseLUTPol_b = (bool)UseLUTPol;
 	saveAmps = (bool)saveAmplitudes;
+	alpha_RPC = alpha*2.0f*M_PI;
 	int Ncoeff[5] = {20, 35, 56, 84, 120};
 	if ((3<=PolOrder)&&(PolOrder<=7))
 		N_LUTPolCoeff = Ncoeff[PolOrder - 3];
