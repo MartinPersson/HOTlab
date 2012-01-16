@@ -978,3 +978,81 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
 	}
 }*/
+
+////////////////////////////////////////////////////////////////////////////////
+//Adjust amplitudes in spot positions
+////////////////////////////////////////////////////////////////////////////////
+__global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_desiredAmp, bool last_iteration, bool save_amps, int data_w)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	int spotIndex;
+	float pSpot;
+	//__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
+	float weight;
+	cufftComplex cSpotAmp_cc;
+
+	if (idx<N_spots)
+	{
+		float desiredAmp = g_desiredAmp[idx];
+		spotIndex = g_spotIndex[idx];
+		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
+		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
+		float aSpot = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/desiredAmp;
+		if (iteration != 0)
+			weight = g_weight[idx + iteration*N_spots];
+		else
+		{
+			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara så här med DC?
+			weight = desiredAmp/(512*512);	
+		}
+		weight = weight / aSpot;   
+		cSpotAmp_cc.x = cosf(pSpot) * weight;
+		cSpotAmp_cc.y = sinf(pSpot) * weight;
+		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+		if (last_iteration)
+			g_weight[idx] = weight;
+		else
+			g_weight[N_spots * (iteration + 1) + idx] = weight;
+		if (save_amps)
+			g_amplitude[N_spots * (iteration) + idx] = aSpot;
+	}	
+	__syncthreads();	
+				
+	//compute weights 
+	/*if  (idx==0)
+	{
+		float ISpot_sum = 0;
+		for (int jj=0; jj<N_spots;jj++)
+		{	
+			ISpot_sum += s_aSpot[jj]*s_aSpot[jj];		
+		}
+		s_ISpotsMeanSq = sqrtf(ISpot_sum / (float)N_spots);				//integer division!!
+	}
+	__syncthreads();
+	if (idx<N_spots)												
+	{
+		weight = weight * s_ISpotsMeanSq / s_aSpot[idx];   
+		cSpotAmp_cc.x = cosf(pSpot) * weight;
+		cSpotAmp_cc.y = sinf(pSpot) * weight;
+		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+
+		if (last_iteration)
+			g_weight[idx] = weight;
+		else
+			g_weight[N_spots * (iteration + 1) + idx] = weight;
+		if (save_amps)
+			g_amplitude[N_spots * (iteration) + idx] = s_aSpot[idx];
+	}*/
+	float N = (float)data_w;
+	int half_w = data_w>>1;
+	int logN = (int)log2(N);
+
+	int X = idx&(int)(N-1); //works only for data_w = power of 2
+	int Y = (idx-X)>>logN;
+	if ((X>200)&&(X<312)||(Y>200)&&(Y<312))
+	{
+		g_cSpotAmpNew_cc[idx].x = g_cSpotAmp_cc[idx].x/(512.0f*512.0f);
+		g_cSpotAmpNew_cc[idx].y = g_cSpotAmp_cc[idx].y/(512.0f*512.0f);
+	}
+}

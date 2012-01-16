@@ -30,7 +30,8 @@
 #include <stdlib.h>
 //#include <stdio.h>
 #include <string.h>
-//#include <math.h>
+#include <math.h>
+
 #include "stdafx.h"
 // includes, project
 
@@ -132,4 +133,6 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 									int N_PolCoeff);
 __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *d_I, bool last_iteration, bool save_amps);
 __global__ void XYtoIndex(float *g_x, float *g_y, int *g_spot_index, int N_spots, int data_w);
+__global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_desiredAmp, bool last_iteration, bool save_amps, int data_w);
+
 #endif

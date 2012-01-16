@@ -112,12 +112,12 @@ extern "C" void SetPower(
 
 extern "C" void ShutDownSLM();
 
-void computeAmps(float *h_I, float *h_amp, int N_spots);
+void computeAmps(float *h_I, float *h_amp, float *x, float *y, int N_spots, float e_desired);
 ////////////////////////////////////////////////////////////////////////////////
 //The main function, generates a hologram 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method)
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method, float e_desired)
 {
 	if (N_spots > MAX_SPOTS)
 	{
@@ -125,7 +125,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	}
 	else if (N_spots < 3)
 		method = 0;
-	computeAmps(I_spots, h_desiredAmp, N_spots);
+	computeAmps(I_spots, h_desiredAmp, x_spots, y_spots, N_spots, e_desired);
 	memsize_spotsf = N_spots*sizeof(float);
 	cudaMemcpy(d_x, x_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
 	cudaMemcpy(d_y, y_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
@@ -158,7 +158,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//cudaDeviceSynchronize();
 			//uc2f<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
 			////////////////////////////////////////////////////////////////////////////
-			computeAmps(I_spots, h_desiredAmp, N_spots);
 			cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice);
 			for (int l=0; l<N_iterations; l++)
 			{	
@@ -188,7 +187,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//cudaDeviceSynchronize();
 			//p_uc2c_cc_shift<<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
 			////////////////////////////////////////////////////////////////////////////////////////////
-			computeAmps(I_spots, h_desiredAmp, N_spots);
+
 			cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice);
 			cudaMemset(d_FFTd_cc, 0, memsize_SLMcc);		
 			XYtoIndex <<< 1, N_spots >>>(d_x,  d_y, d_spot_index, N_spots, data_w);
@@ -203,7 +202,8 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				//////////////////////////////////////////////////////////
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
 				//////////////////////////////////////////////////////////
-				ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
+				ReplaceAmpsSpots_FFT_DC <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps, data_w);
+				//ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
 				cudaDeviceSynchronize();
 				//////////////////////////////////////////////////////////
 				//Transform back to SLM plane
@@ -221,7 +221,8 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			break;
-	//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
+			
+			//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
 	}
 
 	//load image to the PCIe hardware  SLMstuff
@@ -477,13 +478,18 @@ extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, flo
 	return status;
 }
 
-void computeAmps(float *h_I, float *h_desiredAmp, int N_spots)
+void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
 {
+	float SLMsize = (float)SLM_SIZE;
 	float Isum = 0;
 	for (int i = 0; i<N_spots; i++)
 		Isum += h_I[i];
 	for (int j = 0; j<N_spots; j++)
-		h_desiredAmp[j] = (h_I[j] <= 0) ? 0.01f:sqrtf(h_I[j]/Isum);
+	{
+		float sincx_rec = (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
+		float sincy_rec = (y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
+		h_desiredAmp[j] = (h_I[j] <= 0) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(e_desired*h_I[j]/Isum)*SLMsize*SLMsize);
+	}
 }
 
 
