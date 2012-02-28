@@ -91,6 +91,12 @@ cufftHandle plan;
 cufftComplex *d_FFTo_cc, *d_FFTd_cc, *d_SLM_cc;
 int *d_spot_index, memsize_SLMcc;
 
+///////////////////////////////////////////////////
+//Martin don't care
+///////////////////////////////////////////////////
+int borderWidthDC;
+float *d_obtainedPhase;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to talk to SLM Hardware
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,19 +170,27 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				////////////////////////////////////////////////////
 				//Propagate to the farfield 
 				////////////////////////////////////////////////////				
-				PropagateToSpotPositions_Fresnel<<< N_spots, 512>>>(d_x, d_y, d_z, d_pSLM_f, d_spotRe_f, d_spotIm_f, N_spots, N_pixels, data_w);
+				cufftExecC2C(plan, d_SLM_cc, d_FFTo_cc, CUFFT_FORWARD);
+				PropagateToSpotPositionsDC_Fresnel<<< N_spots, 512>>>(d_x, d_y, d_z, d_SLM_cc, d_desiredAmp, d_obtainedPhase, d_weights, d_amps, l, N_spots, N_pixels, data_w);
+
+				setActiveRegionToZero<<< 512, 512 >>>(d_FFTo_cc, borderWidthDC);
 				cudaDeviceSynchronize();		
 				////////////////////////////////////////////////////
 				//Propagate to the SLM plane
 				////////////////////////////////////////////////////
-				PropagateToSLM_Fresnel<<< 512, 512 >>>(d_x, d_y, d_z, d_desiredAmp, d_spotRe_f, d_spotIm_f, d_pSLM_f, N_pixels, N_spots, d_weights, l, d_pSLMstart_f, alpha_RPC, 
-					d_amps, (l==(N_iterations-1)), d_pSLM_uc, d_LUT_uc, ApplyLUT_b, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff, saveAmps);
+				cufftExecC2C(plan, d_FFTo_cc, d_SLM_cc, CUFFT_INVERSE);
+				cudaDeviceSynchronize();
+				
+				PropagateToSLMDC_Fresnel<<< 512, 512 >>>(d_x, d_y, d_z, d_obtainedPhase, d_weights, d_SLM_cc, N_pixels, N_spots, l, d_pSLMstart_f, alpha_RPC, 
+					(l==(N_iterations-1)), d_pSLM_uc, d_LUT_uc, ApplyLUT_b, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff, saveAmps);
+				
 				cudaDeviceSynchronize();
 			}	
 			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			if (saveAmps)
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
-			//cudaMemcpy(h_obtainedAmps, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
+			else
+				cudaMemcpy(h_obtainedAmps, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			break;
 		case 2: 
 			////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,8 +216,10 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				//////////////////////////////////////////////////////////
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
 				//////////////////////////////////////////////////////////
-				ReplaceAmpsSpots_FFT_DC <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps, data_w);
-				//ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
+				if (e_desired<1)
+					ReplaceAmpsSpots_FFT_DC <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps, data_w);
+				else
+					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
 				cudaDeviceSynchronize();
 				//////////////////////////////////////////////////////////
 				//Transform back to SLM plane
@@ -244,13 +260,15 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
 	UseLUTPol_b = (bool)UseLUTPol;
 	saveAmps = (bool)saveAmplitudes;
 	alpha_RPC = alpha*2.0f*M_PI;
+	borderWidthDC = DCborderWidth;
 	int Ncoeff[5] = {20, 35, 56, 84, 120};
+	
 	if ((3<=PolOrder)&&(PolOrder<=7))
 		N_LUTPolCoeff = Ncoeff[PolOrder - 3];
 	else
@@ -313,6 +331,8 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
     cudaGetDeviceProperties(&deviceProp, deviceId);
     maxThreads_device = deviceProp.maxThreadsPerBlock;
     
+	borderWidthDC = 64;
+
 	int MaxIterations = 1000;
 	data_w = SLM_SIZE;
 	N_pixels = data_w * data_w;
@@ -332,7 +352,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	cudaMalloc((void**)&d_weights, MAX_SPOTS*(MaxIterations+1)*sizeof(float));
 	cudaMalloc((void**)&d_amps, MAX_SPOTS*MaxIterations*sizeof(float));
 	
-	cudaMalloc((void**)&d_spotRe_f, memsize_spotsf );
+	cudaMalloc((void**)&d_obtainedPhase, memsize_spotsf );
 	cudaMalloc((void**)&d_spotIm_f, memsize_spotsf );
 	cudaMalloc((void**)&d_pSLM_f, memsize_SLMf);
 	cudaMalloc((void**)&d_pSLMstart_f, memsize_SLMf);
@@ -486,8 +506,8 @@ void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spot
 		Isum += h_I[i];
 	for (int j = 0; j<N_spots; j++)
 	{
-		float sincx_rec = (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
-		float sincy_rec = (y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
+		float sincx_rec = 1.0f;//= (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
+		float sincy_rec = 1.0f;//(y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
 		h_desiredAmp[j] = (h_I[j] <= 0) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(e_desired*h_I[j]/Isum)*SLMsize*SLMsize);
 	}
 }

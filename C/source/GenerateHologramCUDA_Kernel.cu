@@ -36,6 +36,43 @@ __device__ float ApplyAberrationCorrection(float pSpot, float correction)
 		pSpot = pSpot + correction;		//apply correction
 		return (pSpot - (2.0f*M_PI) * floor((pSpot+M_PI) / (2.0f*M_PI))); //apply mod([-pi, pi], pSpot) 
 }
+__device__ int fftshift(int idx, int data_w)
+{
+		//float phase255;
+	float N = (float)data_w;
+	int half_w = data_w>>1;
+	int logN = (int)log2(N);
+
+	int X = idx&(int)(N-1); //works only for data_w = power of 2
+	int Y = (idx-X)>>logN;				
+	//float X = (idx%data_w);
+	//float Y = floor(idx/N); 		
+
+	if (X < half_w)
+	{	
+		if (Y < half_w)
+		{
+			return idx + (data_w * half_w) + half_w;
+		}
+		else
+		{
+			return idx - (data_w * half_w) + half_w;
+		}
+	}
+	else
+	{
+		if (Y < half_w)
+		{		
+			return idx + (data_w * half_w) - half_w;
+		}
+		else
+		{		
+			return idx - (data_w * half_w) - half_w;
+		}
+	}
+
+}
+
 
 /*__device__ unsigned char applyPolLUT(float phase2pi, float X, float Y, float *s_c, int N_PolCoeff)		
 {
@@ -461,7 +498,97 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_x, float *g_y, float *
 		g_Vim[spot_number] = s_Vim[0] / 262144.0f;
 	}
 }
+////////////////////////////////////////////////////////////////////////////////
+//Functions for GS with Fresnel propagation
+////////////////////////////////////////////////////////////////////////////////
+//Propagate from the SLM to the spot positions using Fresnel summation
+//(Works for 512x512 pixels only!)
+////////////////////////////////////////////////////////////////////////////////
+__global__ void PropagateToSpotPositionsDC_Fresnel(float *g_x, float *g_y, float *g_z, cufftComplex *g_cSLM_cc, float *g_desiredAmp, float *g_obtainedPhase, float *g_weights, float *obtainedI, int iteration, int N_spots, int n, int data_w)
+{
+	int blockSize = 512;
+	int spot_number = blockIdx.x;
+	int tid = threadIdx.x;
+	int i = tid;
+	
+	__shared__ float s_Vre[BLOCK_SIZE];		
+	__shared__ float s_Vim[BLOCK_SIZE];
+	//__shared__ float s_xm, s_ym, s_zm;
+	float s_xm, s_ym, s_zm;
 
+	s_Vre[tid] = 0;
+	s_Vim[tid] = 0;
+
+	s_xm = g_x[spot_number];
+	s_ym = g_y[spot_number];	
+	s_zm = g_z[spot_number];
+	
+	float d = 0.001953125;	//Normalized pixel pitch (1/512) 512!	
+	float X1 = d * (float)(tid - 256);	//512!
+	float Y1 = - d * 256.0f;
+	//float Y2 = - d * 255.0f;
+	float p;
+	//__syncthreads();
+	int index;
+	while (i < n) 
+	{
+		index = fftshift(i, 512);
+		p = atan2f(g_cSLM_cc[index].y, g_cSLM_cc[index].x) - M_PI * (s_zm * (X1*X1 + Y1*Y1) + 2.0f * (X1 * s_xm + Y1 * s_ym));
+		
+		s_Vre[tid] += cosf(p);
+		s_Vim[tid] += sinf(p);
+
+		i += blockSize;
+		Y1 += d; 	
+	}
+	__syncthreads();
+ 
+	if (tid < 256) 
+	{ 
+		s_Vre[tid] += s_Vre[tid + 256]; 
+		s_Vim[tid] += s_Vim[tid + 256];
+	} 
+	__syncthreads(); 
+
+	if (tid < 128)
+	{ 
+		s_Vre[tid] += s_Vre[tid + 128];
+		s_Vim[tid] += s_Vim[tid + 128];  
+	} 
+	__syncthreads(); 
+
+	if (tid < 64) 
+	{ 
+		s_Vre[tid] += s_Vre[tid + 64];
+		s_Vim[tid] += s_Vim[tid + 64]; 
+	} 
+	__syncthreads(); 
+
+	
+	if (tid < 32)
+		warpReduceC(s_Vre, s_Vim, tid);
+
+	if (tid == 0) 
+	{
+		g_obtainedPhase[spot_number] = atan2f(s_Vim[0], s_Vre[0]);
+		//g_Vre[spot_number] = s_Vre[0] / 262144.0f;
+		//g_Vim[spot_number] = s_Vim[0] / 262144.0f;
+		if (iteration != 0)
+		{
+			g_weights[spot_number + N_spots*iteration] = g_weights[spot_number + N_spots*(iteration-1)] * (g_desiredAmp[spot_number] / hypotf(s_Vre[0], s_Vim[0]));
+			float aSpot = hypotf(s_Vre[0], s_Vim[0])/262144.0f;
+			obtainedI[spot_number + N_spots*iteration] = aSpot*aSpot;
+		}
+		else
+		{
+			float aSpot = hypotf(s_Vre[0], s_Vim[0])/262144.0f;
+			obtainedI[spot_number + N_spots*iteration] = aSpot*aSpot;
+			//aSpot = (aSpot<0.5f) ? 0.5f : aSpot;
+			float desiredAmp = g_desiredAmp[spot_number];
+			g_weights[spot_number] = desiredAmp;//*desiredAmp/aSpot;	
+		}
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //Obtain phases in SLM plane
@@ -582,6 +709,113 @@ __global__ void PropagateToSLM_Fresnel(float *g_x, float *g_y, float *g_z, float
 			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
 	}
 }
+////////////////////////////////////////////////////////////////////////////////
+//Obtain phases in SLM plane
+////////////////////////////////////////////////////////////////////////////////
+//works only for blocksize 512 and max 512 spots
+////////////////////////////////////////////////////////////////////////////////
+__global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, float *g_pSpot, float *g_wSpot, cufftComplex *g_cSLM_cc, int N_pixels, 
+								int N_spots, int iteration, float *g_pSLMstart, float RPC, bool getpSLM255, unsigned char *g_pSLM255_uc,
+								unsigned char *g_LUT, bool ApplyLUT_b, bool UseAberrationCorr_b, float *g_AberrationCorr_f, bool UseLUTPol_b, float *g_LUTPolCoeff_f, 
+								int N_PolCoeff, bool saveAmps)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int tid = threadIdx.x;	
+	__shared__ float s_weight[MAX_SPOTS], s_pSpot[MAX_SPOTS];
+	__shared__ float s_xm[MAX_SPOTS];
+	__shared__ float s_ym[MAX_SPOTS];
+	__shared__ float s_zm[MAX_SPOTS];
+	float reSLM = 0, imSLM = 0, pSLM2pi_f = 0;
+
+	if (idx<N_pixels)
+	{
+		if (tid<N_spots)
+		{
+			s_pSpot[tid] = g_pSpot[tid];
+			s_weight[tid] = g_wSpot[tid+N_spots*iteration];
+
+			s_xm[tid] = g_x[tid];
+			s_ym[tid] = g_y[tid];
+			s_zm[tid] = g_z[tid];
+		}	
+		__syncthreads();
+
+		//get pixel coordinates
+		float d = 0.001953125f;											//Normalized pixel pitch (1/512) 512!
+ 		float X = d * ((float)threadIdx.x - 256.0f);					//512!
+ 		float Y = d * ((float)blockIdx.x - 256.0f);
+		
+		//change this to allow data_w!=512
+		//float X = d*((float)(idx%data_w) - (float)data_w/2.0f);
+		//float Y = d*((float)(floor((float)idx/(float)data_w)) - (float)data_w/2.0f);
+		
+		//compute SLM pSpot by summing contribution from all spots
+		for (int k=0; k<N_spots; k++)
+		{
+			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0f * M_PI * (X * s_xm[k] + Y * s_ym[k]);
+			reSLM += s_weight[k] * cosf(s_pSpot[k] + delta);
+			imSLM += s_weight[k] * sinf(s_pSpot[k] + delta);
+		}
+		
+		int shiftedidx = fftshift(idx, 512);		//512!
+		reSLM += g_cSLM_cc[shiftedidx].x;  //512^4 512!
+		imSLM += g_cSLM_cc[shiftedidx].y;
+		
+		pSLM2pi_f = atan2f(imSLM, reSLM);		
+		
+		if (RPC < (2.0f*M_PI))			//Apply RPC (restricted Phase Change)
+		{	
+			float pSLMstart = g_pSLMstart[shiftedidx];
+			if (fabs(pSLM2pi_f - pSLMstart) > RPC)
+				pSLM2pi_f = pSLMstart;
+			if (getpSLM255)
+				g_pSLMstart[shiftedidx] = pSLM2pi_f;
+		}		
+
+		if (getpSLM255)					//Compute final SLM phases and write to global memory... 
+		{	
+			if (UseAberrationCorr_b)
+				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]); //fftshift??
+
+			if (UseLUTPol_b)
+			{
+				__shared__ float s_LUTcoeff[120];
+				if (tid < N_PolCoeff)
+					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff, N_PolCoeff);
+			}
+			else if (ApplyLUT_b)
+			{
+				__shared__ unsigned char s_LUT[256];
+				if (tid < 256)
+					s_LUT[tid] = g_LUT[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
+			}
+			else
+				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
+		}
+		else
+		{
+			g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
+			g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
+			//g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
+		}
+	}
+}
+__global__ void setActiveRegionToZero(cufftComplex *g_Farfield_cc, int borderWidth)
+{
+	int tid = threadIdx.x;
+	int bid = blockIdx.x;
+	int idx = bid * blockDim.x + tid;
+	if (((tid < (256 - borderWidth))||(tid > (255 + borderWidth)))&&((bid < (256 - borderWidth))||(bid > (255 + borderWidth))))
+	{	
+		g_Farfield_cc[idx].x = 0;
+		g_Farfield_cc[idx].y = 0;
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //Convert from unsigned char [0, 255] to float [-pi, pi]
 ////////////////////////////////////////////////////////////////////////////////
@@ -1004,7 +1238,7 @@ __global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComple
 		else
 		{
 			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara så här med DC?
-			weight = desiredAmp/(512*512);	
+			weight = desiredAmp/(262144.0f);	
 		}
 		weight = weight / aSpot;   
 		cSpotAmp_cc.x = cosf(pSpot) * weight;
@@ -1052,7 +1286,7 @@ __global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComple
 	int Y = (idx-X)>>logN;
 	if ((X>200)&&(X<312)||(Y>200)&&(Y<312))
 	{
-		g_cSpotAmpNew_cc[idx].x = g_cSpotAmp_cc[idx].x/(512.0f*512.0f);
-		g_cSpotAmpNew_cc[idx].y = g_cSpotAmp_cc[idx].y/(512.0f*512.0f);
+		g_cSpotAmpNew_cc[idx].x = g_cSpotAmp_cc[idx].x/(262144.0f);
+		g_cSpotAmpNew_cc[idx].y = g_cSpotAmp_cc[idx].y/(262144.0f);
 	}
 }
