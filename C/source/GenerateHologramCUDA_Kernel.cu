@@ -276,7 +276,7 @@ __device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int ti
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //Calculate hologram using "Lenses and Prisms"
 /////////////////////////////////////////////////////////////////////////////////////////////////
-__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, bool ApplyLUT_b, int data_w, bool UseAberrationCorr_b, float *d_AberrationCorr_f, bool UseLUTPol_b, float *d_LUTPolCoeff_f, int N_PolCoeff)
+__global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_a, unsigned char *g_SLMuc, int N_spots, unsigned char *g_LUT, bool ApplyLUT_b, int data_w, bool UseAberrationCorr_b, float *d_AberrationCorr_f, bool UseLUTPol_b, float *d_LUTPolCoeff_f, int N_PolCoeff)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;
@@ -291,7 +291,7 @@ __global__ void LensesAndPrisms(float *g_x, float *g_y, float *g_z, float *g_I, 
 		s_x[tid] = g_x[tid];
 		s_y[tid] = g_y[tid];
 		s_z[tid] = g_z[tid];
-		s_a[tid] = sqrtf(g_I[tid]);
+		s_a[tid] = g_a[tid];
 	}
 	__syncthreads();	
 	
@@ -571,22 +571,20 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(float *g_x, float *g_y, float
 	if (tid == 0) 
 	{
 		g_obtainedPhase[spot_number] = atan2f(s_Vim[0], s_Vre[0]);
+		float obtainedAmp = hypotf(s_Vre[0], s_Vim[0]);
 		//g_Vre[spot_number] = s_Vre[0] / 262144.0f;
 		//g_Vim[spot_number] = s_Vim[0] / 262144.0f;
+		float desiredAmp = g_desiredAmp[spot_number];
 		if (iteration != 0)
 		{
-			g_weights[spot_number + N_spots*iteration] = g_weights[spot_number + N_spots*(iteration-1)] * (g_desiredAmp[spot_number] / hypotf(s_Vre[0], s_Vim[0]));
-			float aSpot = hypotf(s_Vre[0], s_Vim[0])/262144.0f;
-			obtainedI[spot_number + N_spots*iteration] = aSpot*aSpot;
+			g_weights[spot_number + N_spots*iteration] = g_weights[spot_number + N_spots*(iteration-1)] * (desiredAmp / obtainedAmp);
 		}
 		else
-		{
-			float aSpot = hypotf(s_Vre[0], s_Vim[0])/262144.0f;
-			obtainedI[spot_number + N_spots*iteration] = aSpot*aSpot;
-			//aSpot = (aSpot<0.5f) ? 0.5f : aSpot;
-			float desiredAmp = g_desiredAmp[spot_number];
-			g_weights[spot_number] = desiredAmp;//*desiredAmp/aSpot;	
+		{			
+			//obtainedAmp = (obtainedAmp<0.5f) ? 0.5f : obtainedAmp;
+			g_weights[spot_number] = desiredAmp/262144.0f;//*desiredAmp/obtainedAmp;	
 		}
+		obtainedI[spot_number + N_spots*iteration] = obtainedAmp*obtainedAmp/68719476736.0f;
 	}
 }
 
@@ -758,8 +756,8 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, flo
 		}
 		
 		int shiftedidx = fftshift(idx, 512);		//512!
-		reSLM += g_cSLM_cc[shiftedidx].x;  //512^4 512!
-		imSLM += g_cSLM_cc[shiftedidx].y;
+		reSLM += g_cSLM_cc[shiftedidx].x/262144.0f;  //512^4 512!
+		imSLM += g_cSLM_cc[shiftedidx].y/262144.0f;
 		
 		pSLM2pi_f = atan2f(imSLM, reSLM);		
 		
@@ -796,12 +794,8 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, flo
 			else
 				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
 		}
-		else
-		{
-			g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
-			g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
-			//g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
-		}
+		g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
+		g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
 	}
 }
 __global__ void setActiveRegionToZero(cufftComplex *g_Farfield_cc, int borderWidth)

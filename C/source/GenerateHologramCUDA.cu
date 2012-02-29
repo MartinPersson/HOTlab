@@ -131,8 +131,10 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	}
 	else if (N_spots < 3)
 		method = 0;
-	computeAmps(I_spots, h_desiredAmp, x_spots, y_spots, N_spots, e_desired);
 	memsize_spotsf = N_spots*sizeof(float);
+	computeAmps(I_spots, h_desiredAmp, x_spots, y_spots, N_spots, e_desired);
+	cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice);
+	
 	cudaMemcpy(d_x, x_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
 	cudaMemcpy(d_y, y_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
 	cudaMemcpy(d_z, z_spots, memsize_spotsf, cudaMemcpyHostToDevice);
@@ -143,8 +145,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//////////////////////////////////////////////////
 			//Generate the hologram using "Lenses and Prisms"
 			//////////////////////////////////////////////////
-			cudaMemcpy(d_I, I_spots, memsize_spotsf, cudaMemcpyHostToDevice);
-			LensesAndPrisms<<< n_blocks_Phi, BLOCK_SIZE >>>(d_x, d_y, d_z, d_I, d_pSLM_uc, N_spots, d_LUT_uc, ApplyLUT_b, data_w, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff);
+			LensesAndPrisms<<< n_blocks_Phi, BLOCK_SIZE >>>(d_x, d_y, d_z, d_desiredAmp, d_pSLM_uc, N_spots, d_LUT_uc, ApplyLUT_b, data_w, UseAberrationCorr_b, d_AberrationCorr_f, UseLUTPol_b, d_LUTPolCoeff_f, N_LUTPolCoeff);
 			cudaDeviceSynchronize();
 			if (saveAmps)
 			{
@@ -152,8 +153,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				cudaDeviceSynchronize();
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*sizeof(float), cudaMemcpyDeviceToHost);
 			}
-			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);	
-			
 			break;
 		case 1:
 			////////////////////////////////////////////////////////////////////////////
@@ -164,7 +163,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//cudaDeviceSynchronize();
 			//uc2f<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
 			////////////////////////////////////////////////////////////////////////////
-			cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice);
+			
 			for (int l=0; l<N_iterations; l++)
 			{	
 				////////////////////////////////////////////////////
@@ -186,7 +185,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				
 				cudaDeviceSynchronize();
 			}	
-			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			if (saveAmps)
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			else
@@ -235,12 +233,11 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			}		
 			if (saveAmps)
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
-			cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);			
 			break;
 			
 			//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
 	}
-
+	cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost);
 	//load image to the PCIe hardware  SLMstuff
 	if(EnableSLM_b)
 		LoadImg(h_pSLM_uc);
