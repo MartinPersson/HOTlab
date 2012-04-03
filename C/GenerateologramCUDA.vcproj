@@ -1557,42 +1557,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Release_SM11_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM11_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 				<FileConfiguration
@@ -1673,6 +1637,42 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release_SM20_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Release_SM11_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM11_PCIeSLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool

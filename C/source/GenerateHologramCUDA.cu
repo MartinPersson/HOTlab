@@ -117,13 +117,13 @@ extern "C" void SetPower(
 );
 
 extern "C" void ShutDownSLM();
-
-void computeAmps(float *h_I, float *h_amp, float *x, float *y, int N_spots, float e_desired);
+//void computeAmps(float *h_I, float *h_amp, float *x, float *y, int N_spots, float e_desired);
+void computeAmps(float *h_I, float *h_amp, float *x, float *y, int N_spots);
 ////////////////////////////////////////////////////////////////////////////////
 //The main function, generates a hologram 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method, float e_desired)
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method)
 {
 	if (N_spots > MAX_SPOTS)
 	{
@@ -132,9 +132,9 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 	else if (N_spots < 3)
 		method = 0;
 	memsize_spotsf = N_spots*sizeof(float);
-	computeAmps(I_spots, h_desiredAmp, x_spots, y_spots, N_spots, e_desired);
+	computeAmps(I_spots, h_desiredAmp, x_spots, y_spots, N_spots);
 	cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice);
-	
+
 	cudaMemcpy(d_x, x_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
 	cudaMemcpy(d_y, y_spots, memsize_spotsf, cudaMemcpyHostToDevice);	
 	cudaMemcpy(d_z, z_spots, memsize_spotsf, cudaMemcpyHostToDevice);
@@ -214,10 +214,10 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				//////////////////////////////////////////////////////////
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
 				//////////////////////////////////////////////////////////
-				if (e_desired<1)
+//				if (e_desired<1)
 					ReplaceAmpsSpots_FFT_DC <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps, data_w);
-				else
-					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
+//				else
+//					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, d_spot_index, N_spots, l, d_amps, d_weights, d_desiredAmp, (l==(N_iterations-1)), saveAmps);
 				cudaDeviceSynchronize();
 				//////////////////////////////////////////////////////////
 				//Transform back to SLM plane
@@ -494,8 +494,8 @@ extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, flo
 	}
 	return status;
 }
-
-void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
+//compute amps for constant total int
+/*void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
 {
 	float SLMsize = (float)SLM_SIZE;
 	float Isum = 0;
@@ -506,6 +506,21 @@ void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spot
 		float sincx_rec = 1.0f;//= (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
 		float sincy_rec = 1.0f;//(y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
 		h_desiredAmp[j] = (h_I[j] <= 0) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(e_desired*h_I[j]/Isum)*SLMsize*SLMsize);
+	}
+}*/
+
+//compute amps for constant individual I, desired I given in % of tot
+void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots)
+{
+	float SLMsize = (float)SLM_SIZE;
+	//float Isum = 0;
+	//for (int i = 0; i<N_spots; i++)
+	//	Isum += h_I[i];
+	for (int j = 0; j<N_spots; j++)
+	{
+		float sincx_rec = (x[j]==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
+		float sincy_rec = (y[j]==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
+		h_desiredAmp[j] = (h_I[j] <= 0) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(h_I[j]/100)*SLMsize*SLMsize);
 	}
 }
 
