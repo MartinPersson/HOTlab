@@ -24,6 +24,7 @@
 #ifndef GENERATEHOLOGRAMCUDA_H
 #define GENERATEHOLOGRAMCUDA_H
 
+//#define M_CUDA_DEBUG
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 
@@ -154,5 +155,198 @@ __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float 
 __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *d_I, bool last_iteration, bool save_amps);
 __global__ void XYtoIndex(float *g_x, float *g_y, int *g_spot_index, int N_spots, int data_w);
 __global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int *g_spotIndex, int N_spots, int iteration, float *g_amplitude, float *g_weight, float *g_desiredAmp, bool last_iteration, bool save_amps, int data_w);
+
+
+#define M_CHECK_ERROR() mCheckError(__LINE__, __FILE__) 
+#define M_SAFE_CALL(errcode) mSafeCall(errcode, __LINE__, __FILE__)
+#define M_CUFFT_SAFE_CALL(cuffterror) mCufftSafeCall(cuffterror, __LINE__, __FILE__)
+#define M_DISPLAY_DATA_F(data, length) mDisplayDataF(data, length, __LINE__)
+#define M_DISPLAY_DATA_UC(data, length) mDisplayDataUC(data, length, __LINE__)
+#define M_DISPLAY_DATA_CC(data, length) mDisplayDataCC(data, length, __LINE__)
+#define M_DISPLAY_DATA_I(data, length) mDisplayDataI(data, length, __LINE__)
+
+inline void mSafeCall(cudaError_t status, int line, char *file)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		if(status != cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA says: ";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			if (status != CUFFT_SUCCESS)
+			exit(-1);
+		}
+		cudaDeviceSynchronize();
+		status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+	}while(0);
+#endif
+	return;
+}
+inline void mCufftSafeCall(cufftResult_t status, int line, char *file)
+{
+#ifdef M_CUDA_DEBUG
+	if(status != CUFFT_SUCCESS)
+	{
+		char CUDAmessage[200] = "CUFFT error, CUDA says:\n ";
+		switch (status) {
+            case CUFFT_INVALID_PLAN:   strcat(CUDAmessage,"CUFFT_INVALID_PLAN\n");break;
+            case CUFFT_ALLOC_FAILED:   strcat(CUDAmessage,"CUFFT_ALLOC_FAILED\n");break;
+            case CUFFT_INVALID_TYPE:   strcat(CUDAmessage,"CUFFT_INVALID_TYPE\n");break;
+            case CUFFT_INVALID_VALUE:  strcat(CUDAmessage,"CUFFT_INVALID_VALUE\n");break;
+            case CUFFT_INTERNAL_ERROR: strcat(CUDAmessage,"CUFFT_INTERNAL_ERROR\n");break;
+            case CUFFT_EXEC_FAILED:    strcat(CUDAmessage,"CUFFT_EXEC_FAILED\n");break;
+            case CUFFT_SETUP_FAILED:   strcat(CUDAmessage,"CUFFT_SETUP_FAILED\n");break;
+            case CUFFT_INVALID_SIZE:   strcat(CUDAmessage,"CUFFT_INVALID_SIZE\n");break;
+            case CUFFT_UNALIGNED_DATA: strcat(CUDAmessage,"CUFFT_UNALIGNED_DATA\n");break;
+            default: strcat(CUDAmessage,"CUFFT Unknown error code\n");
+
+		}
+		sprintf(CUDAmessage,	"%son line: %d\nin file: %s", CUDAmessage, line, file);
+		AfxMessageBox(CUDAmessage);
+		exit(-1);
+	}
+	cudaDeviceSynchronize();
+	cudaError_t status2 = cudaGetLastError();
+	if(status2!=cudaSuccess)
+	{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status2));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+	}
+#endif
+	return;
+}
+inline void mCheckError(int line, char *file)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		cudaError_t status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA says: ";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+		cudaDeviceSynchronize();
+		status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+	}while(0);
+#endif
+	return;
+}
+
+
+inline void mDisplayDataF(float *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		float *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (float*)malloc(length * sizeof (float));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(float), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %f", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataCC(cufftComplex *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 25;
+		cufftComplex *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (cufftComplex*)malloc(length * sizeof (cufftComplex));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(cufftComplex), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s re: %f im: %f", MessageString, h_data[ii].x, h_data[ii].y);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataUC(unsigned char *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		unsigned char *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (unsigned char*)malloc(length * sizeof (unsigned char));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(unsigned char), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %hhu", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataI(int *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		int *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (int*)malloc(length * sizeof (int));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(int), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %d", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+
 
 #endif

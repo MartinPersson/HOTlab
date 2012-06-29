@@ -185,6 +185,10 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				
 				cudaDeviceSynchronize();
 			}	
+			if (ApplyLUT_b)
+			{
+				M_DISPLAY_DATA_UC(d_LUT_uc, 256);
+			}
 			if (saveAmps)
 				cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost);
 			else
@@ -257,11 +261,12 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth)
+extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
 	UseLUTPol_b = (bool)UseLUTPol;
 	saveAmps = (bool)saveAmplitudes;
+	ApplyLUT_b = (bool)UseLUT;
 	alpha_RPC = alpha*2.0f*M_PI;
 	borderWidthDC = DCborderWidth;
 	int Ncoeff[5] = {20, 35, 56, 84, 120};
@@ -297,15 +302,20 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		d_LUTPolCoeff_f = NULL;	
 	}
 	
-	//Handle CUDA errors
-	status = cudaGetLastError();
-	if(status)
+	if(ApplyLUT_b&&(!UseLUTPol_b))
 	{
-		strcat(CUDAmessage, "CUDA says: ");
-		strcat(CUDAmessage,	cudaGetErrorString(status));
-		strcat(CUDAmessage,	" in function 'Corrections'\n");
-		AfxMessageBox(CUDAmessage);
+		if (d_LUT_uc == NULL)		      //Allocate memory only if not already allocated
+			cudaMalloc((void**)&d_LUT_uc, 256*sizeof(unsigned char));
+		UseLUT = !cudaMemcpy(d_LUT_uc, h_LUT_uc, 256*sizeof(unsigned char), cudaMemcpyHostToDevice);
 	}
+	else if (d_LUT_uc!=NULL)	//If memory is allocated: free memory and reset pointer to NULL
+	{
+		cudaFree(d_LUT_uc);	
+		d_LUT_uc = NULL;
+	}
+	M_CHECK_ERROR();
+
+	status = cudaGetLastError();
 	return status;
 }
 
@@ -314,10 +324,14 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
+	UseAberrationCorr_b = false;
+	UseLUTPol_b = false;
+	saveAmps = false;
+	ApplyLUT_b = false;
 	//Make sure GPU with desired deviceId exists, set deviceId to 0 if not
 	int deviceCount=0;
 	if (cudaGetDeviceCount(&deviceCount)!=0)
-		AfxMessageBox("No CUDA compatible hardware found");
+		AfxMessageBox("No CUDA compatible GPU found");
 	if (deviceId>=deviceCount)
 	{
 		AfxMessageBox("Invalid deviceId, GPU with deviceId 0 used");
@@ -375,11 +389,11 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	if(EnableSLM_b)
 	{
 		bool bRAMWriteEnable = false;
-		h_LUT_uc = new unsigned char[256]; //change this for use with 16-bit interfaces
-		ApplyLUT_b = (bool)InitalizeSLM(bRAMWriteEnable, LUTFile, h_LUT_uc, TrueFrames);  //InitalizeSLM returns 1 if PCI version is installed, PCIe version returns 0 since it applies LUT in hardware 
+		unsigned char* h_LUT0_uc = new unsigned char[256]; //change this for use with 16-bit interfaces
+		ApplyLUT_b = (bool)InitalizeSLM(bRAMWriteEnable, LUTFile, h_LUT0_uc, TrueFrames);  //InitalizeSLM returns 1 if PCI version is installed, PCIe version returns 0 since it applies LUT in hardware 
 		cudaMalloc((void**)&d_LUT_uc, 256);
-		cudaMemcpy(d_LUT_uc, h_LUT_uc, 256, cudaMemcpyHostToDevice);
-		delete []h_LUT_uc;
+		cudaMemcpy(d_LUT_uc, h_LUT0_uc, 256, cudaMemcpyHostToDevice);
+		delete []h_LUT0_uc;
 		SetPower(true);
 	}	
 	

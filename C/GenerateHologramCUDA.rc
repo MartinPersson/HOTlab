@@ -27,8 +27,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,5,0
- PRODUCTVERSION 2,1,5,0
+ FILEVERSION 2,1,17,0
+ PRODUCTVERSION 2,1,17,0
  FILEFLAGSMASK 0x37L
 #ifdef _DEBUG
  FILEFLAGS 0x21L
@@ -45,12 +45,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "Part of HOTlab optical trapping software suit"
             VALUE "FileDescription", "GenerateHologramCUDA Dynamic Link Library"
-            VALUE "FileVersion", "2, 1, 5, 0"
+            VALUE "FileVersion", "2, 1, 17, 0"
             VALUE "InternalName", "GenerateHologramCUDA.dll"
             VALUE "LegalCopyright", "Copyright (C) 2011 Martin Persson"
             VALUE "OriginalFilename", "GenerateHologramCUDA.dll"
             VALUE "ProductName", "GenerateHologramCUDA"
-            VALUE "ProductVersion", "2, 1, 5, 0"
+            VALUE "ProductVersion", "2, 1, 17, 0"
             VALUE "SpecialBuild", "Don't care - experimental"
         END
     END

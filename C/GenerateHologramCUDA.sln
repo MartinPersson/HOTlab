@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerateHologramCUDA", "GenerateologramCUDA.vcproj", "{FC756535-7CE3-4A62-9DD3-7501ED8CA25E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RunDLL", "..\RunDLL\RunDLL.vcproj", "{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -69,45 +67,15 @@ Global
 		{FC756535-7CE3-4A62-9DD3-7501ED8CA25E}.SM20_PCISLM|Win32.Build.0 = Release_SM20_PCISLM|Win32
 		{FC756535-7CE3-4A62-9DD3-7501ED8CA25E}.SM20_PCISLM|x64.ActiveCfg = Release_SM20_PCISLM|x64
 		{FC756535-7CE3-4A62-9DD3-7501ED8CA25E}.SM20_PCISLM|x64.Build.0 = Release_SM20_PCISLM|x64
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Debug|Win32.Build.0 = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Debug|x64.ActiveCfg = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuDebug|Win32.ActiveCfg = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuDebug|Win32.Build.0 = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuDebug|x64.ActiveCfg = Debug|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuRelease|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuRelease|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.EmuRelease|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Release|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Release|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.Release|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_NoSLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_NoSLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_NoSLM|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCIeSLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCIeSLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCIeSLM|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCISLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCISLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM11_PCISLM|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_NoSLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_NoSLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_NoSLM|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCIeSLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCIeSLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCIeSLM|x64.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCISLM|Win32.ActiveCfg = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCISLM|Win32.Build.0 = Release|Win32
-		{8CF4D14D-762A-4A96-A761-FF3CE8872F1F}.SM20_PCISLM|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		BuildVersion_BuildVersioningStyle = None.None.None.None
-		BuildVersion_UpdateAssemblyVersion = False
-		BuildVersion_UpdateFileVersion = False
-		BuildVersion_BuildAction = Both
 		BuildVersion_StartDate = 2011/11/15
+		BuildVersion_BuildAction = Both
+		BuildVersion_UpdateFileVersion = False
+		BuildVersion_UpdateAssemblyVersion = False
+		BuildVersion_BuildVersioningStyle = None.None.None.None
 	EndGlobalSection
 EndGlobal

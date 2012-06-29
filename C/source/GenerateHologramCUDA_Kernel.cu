@@ -723,8 +723,6 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, flo
 	__shared__ float s_xm[MAX_SPOTS];
 	__shared__ float s_ym[MAX_SPOTS];
 	__shared__ float s_zm[MAX_SPOTS];
-	__shared__ float s_LUTcoeff[120];
-	__shared__ unsigned char s_LUT[256];
 	float reSLM = 0, imSLM = 0, pSLM2pi_f = 0;
 
 	if (idx<N_pixels)
@@ -737,15 +735,6 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, flo
 			s_xm[tid] = g_x[tid];
 			s_ym[tid] = g_y[tid];
 			s_zm[tid] = g_z[tid];
-
-			if (UseLUTPol_b)
-			{
-				s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
-			}
-			else if (ApplyLUT_b)
-			{
-				s_LUT[tid] = g_LUT[tid];
-			}
 		}	
 		__syncthreads();
 
@@ -785,13 +774,30 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_x, float *g_y, float *g_z, flo
 		{	
 			if (UseAberrationCorr_b)
 				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]); //fftshift??
-
 			if (UseLUTPol_b)
+			{
+				__shared__ float s_LUTcoeff[120];
+				if (tid < N_PolCoeff)
+					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff, N_PolCoeff);
+			}
+			else if (ApplyLUT_b) 
+			{
+				__shared__ unsigned char s_LUT[256];
+				if (tid < 256)
+					s_LUT[tid] = g_LUT[tid];
+				__syncthreads();
+				g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
+			}
+			else
+				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
+			/*if (UseLUTPol_b)
 				g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff, N_PolCoeff);
 			else if (ApplyLUT_b)
 				g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
 			else
-				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
+				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);*/
 		}
 		g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
 		g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
