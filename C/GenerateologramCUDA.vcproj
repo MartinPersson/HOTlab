@@ -18,7 +18,7 @@
 	</Platforms>
 	<ToolFiles>
 		<DefaultToolFile
-			FileName="NvCudaRuntimeApi.v4.0.rules"
+			FileName="NvCudaRuntimeApi.v5.0.rules"
 		/>
 	</ToolFiles>
 	<Configurations>
@@ -37,9 +37,6 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				PtxAsOptionV="true"
-				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -197,7 +194,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_NoSLM|Win32"
+			Name="Release_NoSLM|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
@@ -213,14 +210,13 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
 				Arch1="11"
-				Arch2="0"
-				MaxRegCount="14"
+				Arch2="13"
+				Arch3="30"
+				MaxRegCount="0"
 				PtxAsOptionV="true"
+				Keep="true"
 				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -289,7 +285,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_NoSLM|x64"
+			Name="Release_NoSLM|x64"
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
@@ -386,9 +382,6 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				PtxAsOptionV="true"
-				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -541,9 +534,6 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				PtxAsOptionV="true"
-				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -696,14 +686,11 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				AdditionalOptions=""
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
-				Arch1="20"
-				Arch2="0"
+				Arch1="11"
+				Arch3="30"
 				PtxAsOptionV="true"
+				Keep="true"
 				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -854,7 +841,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_PCIeSLM|Win32"
+			Name="Release_PCIeSLM|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
@@ -870,14 +857,11 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
 				Arch1="11"
-				Arch2="0"
-				MaxRegCount="14"
+				Arch3="30"
 				PtxAsOptionV="true"
+				Keep="true"
 				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -945,7 +929,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_PCIeSLM|x64"
+			Name="Release_PCIeSLM|x64"
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
@@ -1028,7 +1012,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_PCISLM|Win32"
+			Name="Release_PCISLM|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
@@ -1044,14 +1028,11 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
 				Arch1="11"
-				Arch2="0"
-				MaxRegCount="14"
+				Arch3="30"
 				PtxAsOptionV="true"
+				Keep="true"
 				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1119,7 +1100,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_SM11_PCISLM|x64"
+			Name="Release_PCISLM|x64"
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
@@ -1218,14 +1199,6 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				AdditionalOptions="/D &quot;SM_20&quot;"
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
-				Arch1="20"
-				Arch2="0"
-				PtxAsOptionV="true"
-				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1393,14 +1366,6 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
-				AdditionalOptions="/D &quot;SM_20&quot;"
-				NvccPath="$(CUDA_PATH_V4_1)\bin\nvcc.exe"
-				RequiredIncludes="CUDA_INC_PATH"
-				Arch1="20"
-				Arch2="0"
-				PtxAsOptionV="true"
-				FastMath="true"
-				Optimization="2"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1565,82 +1530,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\GenerateHologramCUDA_kernel.cu"
-				>
-			</File>
-			<File
-				RelativePath=".\LoadHologramNoSLM\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Release_SM11_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM11_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Release_SM11_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM11_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
 				>
 				<FileConfiguration
@@ -1652,7 +1541,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM11_NoSLM|Win32"
+					Name="Release_NoSLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1684,7 +1573,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM11_PCISLM|Win32"
+					Name="Release_PCISLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1693,6 +1582,78 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release_SM20_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramNoSLM\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Release_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Release_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool

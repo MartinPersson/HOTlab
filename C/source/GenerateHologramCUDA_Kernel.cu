@@ -49,6 +49,7 @@ __device__ int fftshift(int idx, int data_w)
 	//float Y = floor(idx/N); 		
 
 	if (X < half_w)
+
 	{	
 		if (Y < half_w)
 		{
@@ -538,7 +539,7 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(float *g_x, float *g_y, float
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
 
-		i += blockSize;
+		i += BLOCK_SIZE;
 		Y1 += d; 	
 	}
 	__syncthreads();
@@ -1224,7 +1225,7 @@ __global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComple
 	//__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
 	float weight;
 	cufftComplex cSpotAmp_cc;
-
+	pSpot = constData[0];
 	if (idx<N_spots)
 	{
 		float desiredAmp = g_desiredAmp[idx];
