@@ -1,5 +1,0 @@
-The folder names indicates which type of GPU the its containing dll is optimized for and what kind of SLM harware interface it is linked to.
-
-Folders are named "SM[XX]_[YYYY]SLM" where [XX] indicates the compute capability of the GPU and [YYYY] indicates the hardware interface of the SLM. 
-
-To determine the compute capability of your GPU, go to http://developer.nvidia.com/cuda-gpus . 
