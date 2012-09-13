@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //Generate a hologram 
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////

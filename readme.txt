@@ -14,6 +14,7 @@ The program requires CUDA to be installed and of course a CUDA enabled GPU. Func
 GeForce GTX 285
 GeForce GTX 480
 GeForce GTX 580
+GeForce GTX 680
 Geforce GS 8600M (Notebook)
 Quadro FX 5600
 GeForce GT 210

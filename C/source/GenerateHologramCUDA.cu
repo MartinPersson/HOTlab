@@ -46,7 +46,7 @@
 //							s = shared memory
 //							c = constant memory
 //							no prefix = registers
-//-The suffix indicates the data type
+//-The suffix indicates the data type, no suffix usually indicates an iteger
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
 //-Improve convergence of the GS algorithms for 2 spots.
@@ -204,7 +204,7 @@ extern "C" void ShutDownSLM();
 ////////////////////////////////////////////////////////////////////////////////
 //Generate a hologram 
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method)
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method)
 {
 	if (N_spots > MAX_SPOTS)
 	{
