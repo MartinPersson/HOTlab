@@ -37,6 +37,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Keep="false"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -215,7 +216,7 @@
 				Arch3="30"
 				MaxRegCount="0"
 				PtxAsOptionV="true"
-				Keep="true"
+				Keep="false"
 				FastMath="true"
 			/>
 			<Tool
@@ -382,6 +383,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Keep="false"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -534,6 +536,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Keep="false"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -689,7 +692,7 @@
 				Arch1="11"
 				Arch3="30"
 				PtxAsOptionV="true"
-				Keep="true"
+				Keep="false"
 				FastMath="true"
 			/>
 			<Tool
@@ -860,7 +863,7 @@
 				Arch1="11"
 				Arch3="30"
 				PtxAsOptionV="true"
-				Keep="true"
+				Keep="false"
 				FastMath="true"
 			/>
 			<Tool
@@ -1031,7 +1034,7 @@
 				Arch1="11"
 				Arch3="30"
 				PtxAsOptionV="true"
-				Keep="true"
+				Keep="false"
 				FastMath="true"
 			/>
 			<Tool
@@ -1199,6 +1202,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Keep="false"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1366,6 +1370,7 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Keep="false"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1530,66 +1535,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="EmuDebug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="EmuRelease|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_SM20_PCISLM|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\LoadHologramNoSLM\LoadHologram.cpp"
 				>
 				<FileConfiguration
@@ -1654,6 +1599,66 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release_SM20_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuDebug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuRelease|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCISLM|Win32"
 					ExcludedFromBuild="true"
 					>
 					<Tool

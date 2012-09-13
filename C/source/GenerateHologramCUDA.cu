@@ -60,15 +60,74 @@
 //-Allow variable spot phases for Lenses and Prisms
 ////////////////////////////////////////////////////////////////////////////////
 
+//#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
 
-#include "GenerateHologramCUDA.h"
+////////////////////////////////////////////////////////////////////////////////
+//Includes
+////////////////////////////////////////////////////////////////////////////////
+#include <stdlib.h>
+//#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include "stdafx.h"
+#include <cufft.h>
 
-//////////////////////////////////////////////////
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
+#define MAX_SPOTS 256	//decrease this if your GPU keeps running out of memory
+#define BLOCK_SIZE 512	//should be a power of 2
+#define SLM_SIZE 512
+#if ((SLM_SIZE==16)||(SLM_SIZE==32)||(SLM_SIZE==64)||(SLM_SIZE==128)||(SLM_SIZE==256)||(SLM_SIZE==512)||(SLM_SIZE==1024)||(SLM_SIZE==2048))
+#define SLMPOW2			//Uses bitwize modulu operations if teh SLM size is a power of 2
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+// forward declarations
+////////////////////////////////////////////////////////////////////////////////
+__global__ void LensesAndPrisms(unsigned char *g_SLMuc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f);
+__global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained);
+__global__ void PropagateToSLM_Fresnel(float *g_spotRe_f, float *g_spotIm_f, float *g_pSLM2pi, float *g_weights, int iteration, float *g_pSLMstart, float *g_amps,
+										bool getpSLM255, unsigned char *g_pSLM255_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f);
+__global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftComplex *g_cSLM_cc, float *g_pSLM_f, int iteration, float *g_pSLMstart, bool getpSLM255, 
+										 unsigned char *g_pSLM255_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f);
+__global__ void setActiveRegionToZero(cufftComplex *g_Farfield);
+__global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spotRe_f, float *g_spotIm_f);
+__global__ void PropagateToSpotPositionsDC_Fresnel(float *g_pSLM_f, float *g_obtainedPhase, float *g_weights, float *g_Iobtained, int iteration);
+__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLMstart, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w);
+__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, bool getpSLM255, unsigned char *g_pSLM255_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f);
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration);
+__global__ void ReplaceAmpsSpotsDC_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration);
+__global__ void XYtoIndex();
+__global__ void f2uc(unsigned char *uc, float *f, int N_pixels, unsigned char *g_LUT, int use_linLUT, int data_w);
+__global__ void uc2f(float *f, unsigned char *uc, int N);
+__global__ void p2c(cufftComplex *g_c, float *g_p, int M);
+void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// Custom debug macros
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+#define M_CHECK_ERROR() mCheckError(__LINE__, __FILE__) 
+#define M_SAFE_CALL(errcode) mSafeCall(errcode, __LINE__, __FILE__)
+#define M_CUFFT_SAFE_CALL(cuffterror) mCufftSafeCall(cuffterror, __LINE__, __FILE__)
+#define M_DISPLAY_DATA_F(data, length) mDisplayDataF(data, length, __LINE__)
+#define M_DISPLAY_DATA_UC(data, length) mDisplayDataUC(data, length, __LINE__)
+#define M_DISPLAY_DATA_CC(data, length) mDisplayDataCC(data, length, __LINE__)
+#define M_DISPLAY_DATA_I(data, length) mDisplayDataI(data, length, __LINE__)
+inline void mSafeCall(cudaError_t status, int line, char *file);
+inline void mCufftSafeCall(cufftResult_t status, int line, char *file);
+inline void mCheckError(int line, char *file);
+inline void mDisplayDataF(float *d_data, int length, int line);
+inline void mDisplayDataCC(cufftComplex *d_data, int length, int line);
+inline void mDisplayDataUC(unsigned char *d_data, int length, int line);
+inline void mDisplayDataI(int *d_data, int length, int line);
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 //Global declaration
-//////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 float *d_x, *d_y, *d_z, *d_I;					//trap coordinates and intensity in GPU memory
 float *d_pSLM_f;								//the optimized pSpot pattern, float [-pi, pi]
-float *d_weights, *d_amps, *d_desiredAmp;		//used h_weights and calculated amplitudes for each spot and each iteration
+float *d_weights, *d_Iobtained, *d_desiredAmp;		//used h_weights and calculated amplitudes for each spot and each iteration
 float *d_pSLMstart_f;							//Initial pSpot pattern [-pi, pi]
 float *d_spotRe_f, *d_spotIm_f;
 float *d_AberrationCorr_f = NULL; 
@@ -82,22 +141,14 @@ unsigned char *d_pSLM_uc;						//The optimized pSpot pattern, unsigned char, the
 unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 int maxThreads_device;
-bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UsePolLUT_b = false, saveAmps_b = false, useRPC_b = false, useDC_b = false;
+bool ApplyLUT_b = false, EnableSLM_b = false, UseAberrationCorr_b = false, UsePolLUT_b = false, saveI_b = false, useRPC_b = false, useDC_b = false;
 float alphaRPC_f = 10;
 char CUDAmessage[100];
 cudaError_t status;
-
-////////////////////////////////////////////////////
-//Global declarations for the FFT version
-////////////////////////////////////////////////////
 float *d_aLaserFFT, *d_LUT_coeff;
 cufftHandle plan;
 cufftComplex *d_FFTo_cc, *d_FFTd_cc, *d_SLM_cc;
 int *d_spot_index, memsize_SLMcc;
-
-///////////////////////////////////////////////////
-//Martin don't care
-///////////////////////////////////////////////////
 int borderWidthDC_i;
 float *d_obtainedPhase;
 
@@ -119,7 +170,7 @@ __device__ __constant__ bool c_useDC_b[1];
 __device__ __constant__ int c_DCborderWidth[1];
 __device__ __constant__ bool c_useRPC_b[1];
 __device__ __constant__ float c_alphaRPC_f[1];
-__device__ __constant__ bool c_saveAmps_b[1];
+__device__ __constant__ bool c_saveI_b[1];
 __device__ __constant__ int c_log2data_w[1];
 __device__ __constant__ float c_x[MAX_SPOTS];
 __device__ __constant__ float c_y[MAX_SPOTS];
@@ -147,13 +198,13 @@ extern "C" void SetPower(
 );
 
 extern "C" void ShutDownSLM();
-//void computeAmps(float *h_I, float *h_amp, float *x, float *y, int N_spots, float e_desired);
-void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method);
 ////////////////////////////////////////////////////////////////////////////////
-//The main function, generates a hologram 
+//Public dll functions 
 ////////////////////////////////////////////////////////////////////////////////
-
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_obtainedAmps, int method)
+////////////////////////////////////////////////////////////////////////////////
+//Generate a hologram 
+////////////////////////////////////////////////////////////////////////////////
+extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method)
 {
 	if (N_spots > MAX_SPOTS)
 	{
@@ -163,15 +214,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 		method = 0;
 	memsize_spotsf = N_spots*sizeof(float);
 	computeAndCopySpotData(I_spots, x_spots, y_spots, z_spots, N_spots, method);
-	//M_SAFE_CALL(cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice));
-	/*cudaMemcpyToSymbol(c_x, x_spots, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_y, y_spots, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_z, z_spots, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_amp, h_desiredAmp, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);*/
-	//M_SAFE_CALL(cudaMemcpy(d_x, x_spots, memsize_spotsf, cudaMemcpyHostToDevice));	
-	//M_SAFE_CALL(cudaMemcpy(d_y, y_spots, memsize_spotsf, cudaMemcpyHostToDevice));	
-	//M_SAFE_CALL(cudaMemcpy(d_z, z_spots, memsize_spotsf, cudaMemcpyHostToDevice));
 
 	switch (method)	{
 		case 0:
@@ -182,12 +224,12 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			M_CHECK_ERROR();
 			cudaDeviceSynchronize();
 			M_CHECK_ERROR();
-			if (saveAmps_b)
+			if (saveI_b)
 			{
-				checkAmplitudes<<< N_spots, SLM_SIZE>>>(d_pSLM_uc, d_amps);
+				calculateIobtained<<< N_spots, SLM_SIZE>>>(d_pSLM_uc, d_Iobtained);
 				M_CHECK_ERROR();
 				cudaDeviceSynchronize();
-				M_SAFE_CALL(cudaMemcpy(h_obtainedAmps, d_amps, N_spots*sizeof(float), cudaMemcpyDeviceToHost));
+				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*sizeof(float), cudaMemcpyDeviceToHost));
 			}
 			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 			break;
@@ -200,36 +242,46 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//cudaDeviceSynchronize();
 			//uc2f<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
 			////////////////////////////////////////////////////////////////////////////
-			
 			for (int l=0; l<N_iterations; l++)
 			{	
 				////////////////////////////////////////////////////
-				//Propagate to the farfield 
+				//Propagate to the spot positions
 				////////////////////////////////////////////////////				
-				M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_SLM_cc, d_FFTo_cc, CUFFT_FORWARD));
-				M_CHECK_ERROR();
-				PropagateToSpotPositionsDC_Fresnel<<< N_spots, 512>>>(d_SLM_cc, d_obtainedPhase, d_weights, d_amps, l);
-				M_CHECK_ERROR();			
-				setActiveRegionToZero<<< SLM_SIZE, SLM_SIZE >>>(d_FFTo_cc);
+				if (useDC_b)
+				{
+					M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_SLM_cc, d_FFTo_cc, CUFFT_FORWARD));
+					M_CHECK_ERROR();
+					PropagateToSpotPositionsDC_Fresnel<<< N_spots, SLM_SIZE>>>(d_pSLM_f, d_obtainedPhase, d_weights, d_Iobtained, l);//this function is very slow
+					M_CHECK_ERROR();
+					setActiveRegionToZero<<< SLM_SIZE, SLM_SIZE >>>(d_FFTo_cc);
+				}
+				else
+					PropagateToSpotPositions_Fresnel<<< N_spots, SLM_SIZE>>>(d_pSLM_f, d_spotRe_f, d_spotIm_f);
 				M_CHECK_ERROR();
 				cudaDeviceSynchronize();
-
 				////////////////////////////////////////////////////
 				//Propagate to the SLM plane
 				////////////////////////////////////////////////////
-				M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_FFTo_cc, d_SLM_cc, CUFFT_INVERSE));	
-				cudaDeviceSynchronize();
-				//M_DISPLAY_DATA_CC(d_SLM_cc, 100);
-				PropagateToSLMDC_Fresnel<<< n_blocks_Phi, BLOCK_SIZE >>>(d_obtainedPhase, d_weights, d_SLM_cc, l, d_pSLMstart_f, (l==(N_iterations-1)), 
-														d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+
+				if (useDC_b)
+				{
+					M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_FFTo_cc, d_SLM_cc, CUFFT_INVERSE));	
+					cudaDeviceSynchronize();
+					PropagateToSLMDC_Fresnel<<< n_blocks_Phi, BLOCK_SIZE >>>(d_obtainedPhase, d_weights, d_SLM_cc, d_pSLM_f, l, d_pSLMstart_f, (l==(N_iterations-1)), 
+																			d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+				}
+				else
+				{
+					PropagateToSLM_Fresnel<<< n_blocks_Phi, BLOCK_SIZE >>>(d_spotRe_f, d_spotIm_f, d_pSLM_f, d_weights, l, d_pSLMstart_f, d_Iobtained, (l==(N_iterations-1)), d_pSLM_uc,
+																			d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+				}
 				M_CHECK_ERROR();
-				//M_DISPLAY_DATA_CC(d_SLM_cc, 100);
 				cudaDeviceSynchronize();
 			}	
-			if (saveAmps_b)
-				M_SAFE_CALL(cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+			if (saveI_b)
+				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
 			else
-				M_SAFE_CALL(cudaMemcpy(h_obtainedAmps, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
 			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 			break;
 		case 2: 
@@ -244,7 +296,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 			//M_DISPLAY_DATA_CC(d_SLM_cc, 100);	
 			M_SAFE_CALL(cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice));
 			M_SAFE_CALL(cudaMemset(d_FFTd_cc, 0, memsize_SLMcc));	
-			//XYtoIndex <<< 1, N_spots >>>();
 			M_CHECK_ERROR();
 			cudaDeviceSynchronize();		
 			for (int l=0; l<N_iterations; l++)
@@ -258,9 +309,9 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
 				//////////////////////////////////////////////////////////
 				if (useDC_b)
-					ReplaceAmpsSpots_FFT_DC <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, l, d_amps, d_weights, (l==(N_iterations-1)));
+					ReplaceAmpsSpotsDC_FFT <<< n_blocks_Phi, BLOCK_SIZE >>> (d_FFTo_cc, d_FFTd_cc, l, d_Iobtained, d_weights, (l==(N_iterations-1)));
 				else
-					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, l, d_amps, d_weights, (l==(N_iterations-1)));
+					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, l, d_Iobtained, d_weights, (l==(N_iterations-1)));
 				M_CHECK_ERROR();	
 				cudaDeviceSynchronize();
 				//////////////////////////////////////////////////////////
@@ -279,10 +330,10 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 
 				cudaDeviceSynchronize();
 			}		
-			if (saveAmps_b)
-				M_SAFE_CALL(cudaMemcpy(h_obtainedAmps, d_amps, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+			if (saveI_b)
+				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
 			else
-				M_SAFE_CALL(cudaMemcpy(h_obtainedAmps, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
 			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 			break;
 		default:
@@ -296,7 +347,6 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_test, unsigned ch
 
 	//Handle CUDA errors
 	status = cudaGetLastError();
-
 	return status;
 }
 
@@ -311,8 +361,8 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 	UsePolLUT_b = (bool)UseLUTPol;
 	cudaMemcpyToSymbol(c_usePolLUT_b, &UsePolLUT_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
-	saveAmps_b = (bool)saveAmplitudes;
-	cudaMemcpyToSymbol(c_saveAmps_b, &saveAmps_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
+	saveI_b = (bool)saveAmplitudes;
+	cudaMemcpyToSymbol(c_saveI_b, &saveI_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
 	ApplyLUT_b = (bool)UseLUT;
 	cudaMemcpyToSymbol(c_applyLUT_b, &ApplyLUT_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
@@ -382,7 +432,6 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 	status = cudaGetLastError();
 	return status;
 }
-	
 ////////////////////////////////////////////////////////////////////////////////
 //Allocate GPU memory and start up SLM
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +439,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 {
 	UseAberrationCorr_b = false;
 	UsePolLUT_b = false;
-	saveAmps_b = false;
+	saveI_b = false;
 	ApplyLUT_b = false;
 	//Make sure GPU with desired deviceId exists, set deviceId to 0 if not
 	int deviceCount=0;
@@ -441,9 +490,10 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	M_SAFE_CALL(cudaMalloc((void**)&d_I, memsize_spotsf ));
 	M_SAFE_CALL(cudaMalloc((void**)&d_desiredAmp, memsize_spotsf ));
 	M_SAFE_CALL(cudaMalloc((void**)&d_weights, MAX_SPOTS*(MaxIterations+1)*sizeof(float)));
-	M_SAFE_CALL(cudaMalloc((void**)&d_amps, MAX_SPOTS*MaxIterations*sizeof(float)));
+	M_SAFE_CALL(cudaMalloc((void**)&d_Iobtained, MAX_SPOTS*MaxIterations*sizeof(float)));
 	
 	M_SAFE_CALL(cudaMalloc((void**)&d_obtainedPhase, memsize_spotsf ));
+	M_SAFE_CALL(cudaMalloc((void**)&d_spotRe_f, memsize_spotsf ));
 	M_SAFE_CALL(cudaMalloc((void**)&d_spotIm_f, memsize_spotsf ));
 	
 	int data_w_pow2 = pow(2, ceil(log((float)data_w)/log(2.0f)));
@@ -486,6 +536,9 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//Free GPU memory and shut down SLM
+////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int stopCUDAandSLM()
 {
 	M_SAFE_CALL(cudaFree(d_x));
@@ -494,7 +547,7 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	M_SAFE_CALL(cudaFree(d_I));
 
 	M_SAFE_CALL(cudaFree(d_weights));
-	M_SAFE_CALL(cudaFree(d_amps));
+	M_SAFE_CALL(cudaFree(d_Iobtained));
 	M_SAFE_CALL(cudaFree(d_pSLM_f));
 	M_SAFE_CALL(cudaFree(d_pSLMstart_f));
 	M_SAFE_CALL(cudaFree(d_pSLM_uc));
@@ -530,95 +583,9 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 
 	return 0;
 }
-////////////////////////////////////////////////////////////////////////////////
-//Calculate amplitudes in positions given by x, y, and z from a given hologram
-////////////////////////////////////////////////////////////////////////////////
-/*extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps)
-{
-	float *d_xall, *d_yall, *d_zall, *d_amps_all;
-	cudaMalloc((void**)&d_xall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_yall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_zall, N_spots_all*sizeof(float) );
-	cudaMalloc((void**)&d_amps_all, N_spots_all*sizeof(float) );
-	cudaMemcpy(d_xall, x_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
-	cudaMemcpy(d_yall, y_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
-	cudaMemcpy(d_zall, z_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);
-	
-	cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
-	int offset = 0;
-	int N_spots_rem = N_spots_all;
-	int N_spots_this;
-	while (N_spots_rem > 0)
-	{
-		N_spots_this = (N_spots_rem > 512) ? 512 : N_spots_rem;
-		checkAmplitudes<<< N_spots_this, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_amps_all+offset, N_spots_this);
-		cudaDeviceSynchronize();
-		
-		N_spots_rem -= 512;
-		offset += 512;
-	}
-	cudaMemcpy(h_amps, d_amps_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
-	
-	cudaFree(d_xall);
-	cudaFree(d_yall);
-	cudaFree(d_zall);
-	cudaFree(d_amps_all);
-	
-	status = cudaGetLastError();
-
-	return status;
-}*/
-//compute amps for constant total int
-/*void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
-{
-	float SLMsize = (float)SLM_SIZE;
-	float Isum = 0.0f;
-	for (int i = 0; i<N_spots; i++)
-		Isum += h_I[i];
-	for (int j = 0; j<N_spots; j++)
-	{
-		float sincx_rec = 1.0f;//= (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
-		float sincy_rec = 1.0f;//(y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
-		h_desiredAmp[j] = (h_I[j] <= 0.0f) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(e_desired*h_I[j]/Isum)*SLMsize*SLMsize);
-	}
-}*/
-
-//compute amps for constant individual I, desired I given in % of tot
-inline void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method)
-{
-	//float Isum = 0.0f;
-	//for (int i = 0; i<N_spots; i++)
-	//	Isum += h_I[i];
-	for (int j = 0; j<N_spots; j++)
-	{
-		float sincx_rec = (x[j]==0)? 1.0f:((M_PI*x[j]/SLMsizef)/sinf(M_PI*x[j]/SLMsizef));
-		float sincy_rec = (y[j]==0)? 1.0f:((M_PI*y[j]/SLMsizef)/sinf(M_PI*y[j]/SLMsizef));
-		h_desiredAmp[j] = (h_I[j] <= 0.0f) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(h_I[j]/100)*SLMsizef*SLMsizef);
-		if (method == 2)
-			h_spotIndex[j] = ((int)(x[j])&(data_w-1))  + ((int)(y[j])&(data_w-1))* data_w;
-	}
-			//h_spotIndex[j] = ((int)x[j])&(data_w-1)  + (((int)y[j])&(data_w-1))*data_w ;
-
-	cudaMemcpyToSymbol(c_x, x, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_y, y, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_z, z, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_amp, h_desiredAmp, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);
-	if (method == 2)
-		cudaMemcpyToSymbol(c_spotIndex, h_spotIndex, N_spots*sizeof(int), 0, cudaMemcpyHostToDevice);
-}
-
-
-__global__ void testfunc(float *testdata)
-{
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	testdata[idx] = idx;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////
-//Common functions
-///////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//Device functions
+/////////////////////////////////////////////////////////////////////////////////
 __device__ unsigned char phase2uc(float phase2pi)
 {
 	return (unsigned char)floor((phase2pi + M_PI)*256.0f / (2.0f * M_PI));
@@ -813,7 +780,7 @@ __device__ int fftshift(int idx, int X, int Y)
 			phase255 = 0.0f;
 			break;
 	}
-	if (phase255 < 0)
+	if (phase255 < 0.0f)
 		phase255 = 0.0f;
 	return (unsigned char)(phase255);
 }*/
@@ -877,38 +844,42 @@ __device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int ti
 	s_Vre[tid] += s_Vre[tid + 1];
 	s_Vim[tid] += s_Vim[tid + 1];
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
+inline void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method)
+{
+	//float Isum = 0.0f;
+	//for (int i = 0; i<N_spots; i++)
+	//	Isum += h_I[i];
+	for (int j = 0; j<N_spots; j++)
+	{
+		float sincx_rec = (x[j]==0)? 1.0f:((M_PI*x[j]/SLMsizef)/sinf(M_PI*x[j]/SLMsizef));
+		float sincy_rec = (y[j]==0)? 1.0f:((M_PI*y[j]/SLMsizef)/sinf(M_PI*y[j]/SLMsizef));
+		h_desiredAmp[j] = (h_I[j] <= 0.0f) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(h_I[j]/100)*SLMsizef*SLMsizef);
+		if (method == 2)
+			h_spotIndex[j] = ((int)(x[j])&(data_w-1))  + ((int)(y[j])&(data_w-1))* data_w;
+	}
+	cudaMemcpyToSymbol(c_x, x, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(c_y, y, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(c_z, z, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(c_amp, h_desiredAmp, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);
+	if (method == 2)
+		cudaMemcpyToSymbol(c_spotIndex, h_spotIndex, N_spots*sizeof(int), 0, cudaMemcpyHostToDevice);
+}
+////////////////////////////////////////////////////////////////////////////////
 //Calculate hologram using "Lenses and Prisms"
-/////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 __global__ void LensesAndPrisms(unsigned char *g_SLMuc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;
-	/*__shared__ float s_x[BLOCK_SIZE];
-	__shared__ float s_y[BLOCK_SIZE];
-	__shared__ float s_z[BLOCK_SIZE];
-	__shared__ float s_a[BLOCK_SIZE];
-	
-	if (tid < c_N_spots[0])
-	{
-		s_x[tid] = g_x[tid];
-		s_y[tid] = g_y[tid];
-		s_z[tid] = g_z[tid];
-		s_a[tid] = g_a[tid];
-	}
-	__syncthreads();	
-	*/
+
 	if (idx < c_N_pixels[0])
 	{
 		//get pixel coordinates
 		int X_int = getXint(idx);
 		int Y_int = getYint(idx, X_int);
-		int shiftedidx = fftshift(idx, X_int, Y_int);
 		float X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
 		float Y = c_SLMpitch_f[0]*(Y_int - c_half_w_f[0]);
- 		//float X = c_SLMpitch_f[0] * ((float)threadIdx.x - c_half_w_f[0]);	//This only works if blocksize = n_blocks = SLMsize
- 		//float Y = c_SLMpitch_f[0] * ((float)blockIdx.x - c_half_w_f[0]);
 		
 		float phase2pi;  
 		float SLMre = 0.0f;
@@ -947,7 +918,7 @@ __global__ void LensesAndPrisms(unsigned char *g_SLMuc, unsigned char *g_LUT, fl
 	}	
 }
 
-__global__ void checkAmplitudes(unsigned char *g_pSLM_uc, float *g_amps)
+__global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained)
 {
 	int blockSize = c_data_w[0];
 	int spot_number = blockIdx.x;
@@ -956,26 +927,25 @@ __global__ void checkAmplitudes(unsigned char *g_pSLM_uc, float *g_amps)
 	
 	__shared__ float s_Vre[BLOCK_SIZE];
 	__shared__ float s_Vim[BLOCK_SIZE];
-	//float s_xm, s_ym, s_zm;
 
 	s_Vre[tid] = 0.0f;
 	s_Vim[tid] = 0.0f;
 		
-	float X1 = c_SLMpitch_f[0] * ((float)tid - c_half_w_f[0]);
-	float Y1 = - c_SLMpitch_f[0] * c_half_w_f[0];
+	float X = c_SLMpitch_f[0] * ((float)tid - c_half_w_f[0]);
+	float Y = - c_SLMpitch_f[0] * c_half_w_f[0];
 	
 	float pSLM_1;
 	float p;
 	while (i < c_N_pixels[0]) 
 	{ 
 		pSLM_1 = 2.0f*M_PI*(float)g_pSLM_uc[i]/255.0f - M_PI;
-		p = pSLM_1 - M_PI * (c_z[spot_number] * (X1*X1 + Y1*Y1) + 2 * (X1 * c_x[spot_number] + Y1 * c_y[spot_number]));
+		p = pSLM_1 - M_PI * (c_z[spot_number] * (X*X + Y*Y) + 2 * (X * c_x[spot_number] + Y * c_y[spot_number]));
 		
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
 
 		i += blockSize;
-		Y1 += c_SLMpitch_f[0]; 	
+		Y += c_SLMpitch_f[0]; 	
 	}
 	/*__syncthreads();
 	if (tid < 512) 
@@ -1010,50 +980,45 @@ __global__ void checkAmplitudes(unsigned char *g_pSLM_uc, float *g_amps)
 
 	if (tid == 0) 
 	{
-		float cSpotAmpRe = s_Vre[0] / c_N_pixels_f[0];			//512!
-		float cSpotAmpIm = s_Vim[0] / c_N_pixels_f[0];
-		g_amps[spot_number] = hypotf(cSpotAmpRe, cSpotAmpIm);
+		float spotRe_f = s_Vre[0] / c_N_pixels_f[0];			//512!
+		float spotIm_f = s_Vim[0] / c_N_pixels_f[0];
+		float amp = hypotf(spotRe_f, spotIm_f);
+		g_Iobtained[spot_number] = amp*amp;
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //Functions for GS with Fresnel propagation
 ////////////////////////////////////////////////////////////////////////////////
-//Propagate from the SLM to the spot positions using Fresnel summation
-//(Works for 512x512 pixels only!)
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_Vre, float *g_Vim)
+//Propagate from the SLM to the spot positions using Fresnel summation
+//works only for blocksize = SLMsize
+////////////////////////////////////////////////////////////////////////////////
+__global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spotRe_f, float *g_spotIm_f)
 {
-	int blockSize = blockDim.x;
+	
 	int spot_number = blockIdx.x;
 	int tid = threadIdx.x;
 	int i = tid;
 	
 	__shared__ float s_Vre[BLOCK_SIZE];		
 	__shared__ float s_Vim[BLOCK_SIZE];
-	//__shared__ float s_xm, s_ym, s_zm;
-	//float s_xm, s_ym, s_zm;
-
 	s_Vre[tid] = 0.0f;
 	s_Vim[tid] = 0.0f;
-
-	//s_xm = g_x[spot_number];
-	//s_ym = g_y[spot_number];	
-	//s_zm = g_z[spot_number];
-
-	float X1 = c_SLMpitch_f[0] * ((float)tid - c_half_w_f[0]);
-	float Y1 = - c_SLMpitch_f[0] * c_half_w_f[0];
-	//float Y2 = - c_SLMpitch_f[0] * 255.0f;
+	int blockSize = blockDim.x;
+	float X = c_SLMpitch_f[0] * ((float)tid - c_half_w_f[0]);
+	float Y = - c_SLMpitch_f[0] * c_half_w_f[0];
 	float p;
-	//__syncthreads();
+
 	while (i < c_N_pixels[0]) 
 	{ 
-		p = g_pSLM2pi[i] - M_PI * (c_z[spot_number] * (X1*X1 + Y1*Y1) + 2.0f * (X1 * c_x[spot_number] + Y1 * c_y[spot_number]));
+		p = g_pSLM2pi[i] - M_PI * (c_z[spot_number] * (X*X + Y*Y) + 2.0f * (X * c_x[spot_number] + Y * c_y[spot_number]));
 		
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
 
 		i += blockSize;
-		Y1 += c_SLMpitch_f[0]; 	
+		Y += c_SLMpitch_f[0]; 	
 	}
 	/*__syncthreads();
  	
@@ -1084,59 +1049,45 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_Vre,
 		s_Vim[tid] += s_Vim[tid + 64]; 
 	} 
 	__syncthreads(); 
-
 	
 	if (tid < 32)
 		warpReduceC(s_Vre, s_Vim, tid);
 
 	if (tid == 0) 
 	{
-		g_Vre[spot_number] = s_Vre[0] / c_N_pixels_f[0];
-		g_Vim[spot_number] = s_Vim[0] / c_N_pixels_f[0];
+		g_spotRe_f[spot_number] = s_Vre[0] / c_N_pixels_f[0];
+		g_spotIm_f[spot_number] = s_Vim[0] / c_N_pixels_f[0];
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////
-//Functions for GS with Fresnel propagation
-////////////////////////////////////////////////////////////////////////////////
 //Propagate from the SLM to the spot positions using Fresnel summation
-//////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSpotPositionsDC_Fresnel(cufftComplex *g_cSLM_cc, float *g_obtainedPhase, float *g_weights, float *obtainedI, int iteration)
+//works only for blocksize = SLMsize
+////////////////////////////////////////////////////////////////////////////////
+__global__ void PropagateToSpotPositionsDC_Fresnel(float *g_pSLM_f, float *g_obtainedPhase, float *g_weights, float *obtainedI, int iteration)
 {
 	int spot_number = blockIdx.x;
 	int tid = threadIdx.x;
 	int i = tid;
-	
-	__shared__ float s_Vre[512];		
-	__shared__ float s_Vim[512];
-	//__shared__ float s_xm, s_ym, s_zm;
-	//float s_xm, s_ym, s_zm;
-	int X_int, Y_int, shiftedidx;
+	__shared__ float s_Vre[SLM_SIZE];		
+	__shared__ float s_Vim[SLM_SIZE];
 	float X, Y;
+	float p;
+
 	s_Vre[tid] = 0.0f;
 	s_Vim[tid] = 0.0f;
 
-	//s_xm = g_x[spot_number];
-	//s_ym = g_y[spot_number];	
-	//s_zm = g_z[spot_number];
-		
-	//float Y2 = - c_SLMpitch_f[0] * 255.0f;
-	float p;
-	//__syncthreads();
+	int X_int = getXint(i);
+	X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
+	Y = 0.5f;
 	while (i < c_N_pixels[0]) 
 	{
-		X_int = getXint(i);
-		Y_int = getYint(i, X);
-		shiftedidx = fftshift(i, X_int, Y_int);
-		X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
-		Y = c_SLMpitch_f[0]*(Y_int - c_half_w_f[0]);
-		//p = atan2f(g_cSLM_cc[shiftedidx].y, g_cSLM_cc[shiftedidx].x) - M_PI * (s_zm * (X*X + Y*Y) + 2.0f * (X * s_xm + Y * s_ym));
-		p = atan2f(g_cSLM_cc[shiftedidx].y, g_cSLM_cc[shiftedidx].x) - M_PI * (c_z[spot_number] * (X*X + Y*Y) + 2.0f * (X * c_x[spot_number] + Y * c_y[spot_number]));
-		
+		p = g_pSLM_f[i] - M_PI * (c_z[spot_number] * (X*X + Y*Y) + 2.0f * (X * c_x[spot_number] + Y * c_y[spot_number]));	
 		s_Vre[tid] += cosf(p);
 		s_Vim[tid] += sinf(p);
-
-		i += 512;	
+		Y += c_SLMpitch_f[0];
+		i += SLM_SIZE;	
 	}
+
 	__syncthreads();
  	
 	if (tid < 256)
@@ -1159,7 +1110,6 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(cufftComplex *g_cSLM_cc, floa
 		s_Vim[tid] += s_Vim[tid + 64]; 
 	} 
 	__syncthreads(); 
-
 	
 	if (tid < 32)
 		warpReduceC(s_Vre, s_Vim, tid);
@@ -1168,11 +1118,7 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(cufftComplex *g_cSLM_cc, floa
 	{
 		g_obtainedPhase[spot_number] = atan2f(s_Vim[0], s_Vre[0]);
 		float obtainedAmp = hypotf(s_Vre[0], s_Vim[0]);
-		//g_Vre[spot_number] = s_Vre[0] / 262144.0f;
-		//g_Vim[spot_number] = s_Vim[0] / 262144.0f;
 		float desiredAmp = c_amp[spot_number];
-
-		//float desiredAmp = g_desiredAmp[spot_number];
 		if (iteration != 0)
 		{
 			g_weights[spot_number + c_N_spots[0]*iteration] = g_weights[spot_number + c_N_spots[0]*(iteration-1)] * (desiredAmp / obtainedAmp);
@@ -1180,36 +1126,32 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(cufftComplex *g_cSLM_cc, floa
 		else
 		{			
 			//obtainedAmp = (obtainedAmp<0.5f) ? 0.5f : obtainedAmp;
-			g_weights[spot_number] = desiredAmp/c_N_pixels_f[0];//*desiredAmp/obtainedAmp;	
+			g_weights[spot_number] = desiredAmp/c_N_pixels_f[0];	
 		}
-		obtainedI[spot_number + c_N_spots[0]*iteration] = obtainedAmp*obtainedAmp/(c_N_pixels_f[0]*c_N_pixels_f[0]);
+		if (c_saveI_b[0])
+			obtainedI[spot_number + c_N_spots[0]*iteration] = obtainedAmp*obtainedAmp/(c_N_pixels_f[0]*c_N_pixels_f[0]);
 	}
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 //Obtain phases in SLM plane
 ////////////////////////////////////////////////////////////////////////////////
-//works only for blocksize 512 and max 512 spots
-////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSLM_Fresnel(float *g_cSpotAmpRe, float *g_cSpotAmpIm, float *g_pSLM2pi, float *g_weights, int iteration, float *g_pSLMstart, float *g_amps, bool getpSLM255, unsigned char *g_pSLM255_uc,
+__global__ void PropagateToSLM_Fresnel(float *g_spotRe_f, float *g_spotIm_f, float *g_pSLM2pi, float *g_weights, int iteration, float *g_pSLMstart, float *g_Iobtained, bool getpSLM255, unsigned char *g_pSLM255_uc,
 								unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;	
 	__shared__ float s_aSpot[MAX_SPOTS], s_aSpotsMean, s_weight[MAX_SPOTS], s_pSpot[MAX_SPOTS];
-//	__shared__ float s_xm[MAX_SPOTS];
-//	__shared__ float s_ym[MAX_SPOTS];
-//	__shared__ float s_zm[MAX_SPOTS];
+
 	float reSLM = 0.0f, imSLM = 0.0f, pSLM2pi_f = 0.0f;
 
 	if (idx<c_N_pixels[0])
 	{
 		if (tid<c_N_spots[0])
 		{
-			float cSpotAmpRe = g_cSpotAmpRe[tid];
-			float cSpotAmpIm = g_cSpotAmpIm[tid];
-			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
-			s_aSpot[tid] = hypotf(cSpotAmpRe, cSpotAmpIm)/c_amp[tid];
+			float spotRe_f = g_spotRe_f[tid];
+			float spotIm_f = g_spotIm_f[tid];
+			s_pSpot[tid] = atan2f(spotIm_f, spotRe_f);
+			s_aSpot[tid] = hypotf(spotRe_f, spotIm_f)/c_amp[tid];
 			if (iteration != 0)
 				s_weight[tid] = g_weights[tid + iteration*c_N_spots[0]];
 			else
@@ -1217,9 +1159,6 @@ __global__ void PropagateToSLM_Fresnel(float *g_cSpotAmpRe, float *g_cSpotAmpIm,
 				s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
 				s_weight[tid] = c_amp[tid];	
 			}	
-			//s_xm[tid] = g_x[tid];
-			//s_ym[tid] = g_y[tid];
-			//s_zm[tid] = g_z[tid];
 		}	
 		__syncthreads();		
 
@@ -1242,8 +1181,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_cSpotAmpRe, float *g_cSpotAmpIm,
 				g_weights[tid + c_N_spots[0]*(iteration+1)] = s_weight[tid];
 			//else
 			//	g_weights[tid] = s_weight[tid];							//Transferring weights to next run may give diverging weights 
-			if (c_saveAmps_b[0])
-				g_amps[tid + c_N_spots[0]*iteration] = s_aSpot[tid];			//may be excluded, used for monitoring only
+			if (c_saveI_b[0])
+				g_Iobtained[tid + c_N_spots[0]*iteration] = s_aSpot[tid]*s_aSpot[tid];			//may be excluded, used for monitoring only
 		}
 		__syncthreads();				
 		//get pixel coordinates
@@ -1251,9 +1190,6 @@ __global__ void PropagateToSLM_Fresnel(float *g_cSpotAmpRe, float *g_cSpotAmpIm,
 		int Y_int = getYint(idx, X_int);
 		float X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
 		float Y = c_SLMpitch_f[0]*(Y_int - c_half_w_f[0]);
- 		//float X = c_SLMpitch_f[0] * ((float)threadIdx.x - 256.0f);	//this only works if blocksize = nblocks = SLMsize = 512
- 		//float Y = c_SLMpitch_f[0] * ((float)blockIdx.x - 256.0f);
-
 		
 		//compute SLM pSpot by summing contribution from all spots
 		for (int k=0; k<c_N_spots[0]; k++)
@@ -1303,17 +1239,12 @@ __global__ void PropagateToSLM_Fresnel(float *g_cSpotAmpRe, float *g_cSpotAmpIm,
 ////////////////////////////////////////////////////////////////////////////////
 //Obtain phases in SLM plane
 ////////////////////////////////////////////////////////////////////////////////
-//works only for blocksize 512 and max 512 spots
-////////////////////////////////////////////////////////////////////////////////
-__global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftComplex *g_cSLM_cc, int iteration, float *g_pSLMstart, bool getpSLM255, 
+__global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftComplex *g_cSLM_cc, float *g_pSLM_f, int iteration, float *g_pSLMstart, bool getpSLM255, 
 										 unsigned char *g_pSLM255_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int tid = threadIdx.x;	
 	__shared__ float s_weight[MAX_SPOTS], s_pSpot[MAX_SPOTS];
-//	__shared__ float s_xm[MAX_SPOTS];
-//	__shared__ float s_ym[MAX_SPOTS];
-//	__shared__ float s_zm[MAX_SPOTS];
 	float reSLM = 0.0f, imSLM = 0.0f, pSLM2pi_f = 0.0f;
 
 	if (idx<c_N_pixels[0])
@@ -1322,10 +1253,6 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 		{
 			s_pSpot[tid] = g_pSpot[tid];
 			s_weight[tid] = g_wSpot[tid+c_N_spots[0]*iteration];
-
-			//s_xm[tid] = c_x[tid];
-			//s_ym[tid] = c_y[tid];
-			//s_zm[tid] = c_z[tid];
 		}	
 		__syncthreads();
 
@@ -1335,20 +1262,17 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 		int shiftedidx = fftshift(idx, X_int, Y_int);
 		float X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
 		float Y = c_SLMpitch_f[0]*(Y_int - c_half_w_f[0]);
- 		//float X = c_SLMpitch_f[0] * ((float)threadIdx.x - 256.0f);	//this only works if blocksize = nblocks = SLMsize = 512
- 		//float Y = c_SLMpitch_f[0] * ((float)blockIdx.x - 256.0f);
-		
+	
 		//compute SLM pSpot by summing contribution from all spots
 		for (int k=0; k<c_N_spots[0]; k++)
 		{
-//			float delta = M_PI * s_zm[k] * (X*X + Y*Y) + 2.0f * M_PI * (X * s_xm[k] + Y * s_ym[k]);
 			float delta = M_PI * c_z[k] * (X*X + Y*Y) + 2.0f * M_PI * (X * c_x[k] + Y * c_y[k]);
 			reSLM += s_weight[k] * cosf(s_pSpot[k] + delta);
 			imSLM += s_weight[k] * sinf(s_pSpot[k] + delta);
 		}
-
-		reSLM += g_cSLM_cc[shiftedidx].x/c_N_pixels_f[0];  //512^2 512!
-		imSLM += g_cSLM_cc[shiftedidx].y/c_N_pixels_f[0];
+		cufftComplex cSLM_cc = g_cSLM_cc[shiftedidx];
+		reSLM += cSLM_cc.x/c_N_pixels_f[0];
+		imSLM += cSLM_cc.y/c_N_pixels_f[0];
 		
 		pSLM2pi_f = atan2f(imSLM, reSLM);		
 		
@@ -1383,18 +1307,15 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 			}
 			else
 				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
-			/*if (UsePolLUT_b)
-				g_pSLM255_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff);
-			else if (ApplyLUT_b)
-				g_pSLM255_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
-			else
-				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);*/
 		}
-
+		g_pSLM_f[idx] = pSLM2pi_f;
 		g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
 		g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
 	}
 }
+////////////////////////////////////////////////////////////////////////////////
+//Clear inside the DC frame
+////////////////////////////////////////////////////////////////////////////////
 __global__ void setActiveRegionToZero(cufftComplex *g_Farfield_cc) //this only works if blocksize = nblocks = SLMsize = 512
 {
 	int tid = threadIdx.x;
@@ -1406,7 +1327,193 @@ __global__ void setActiveRegionToZero(cufftComplex *g_Farfield_cc) //this only w
 		g_Farfield_cc[idx].y = 0.0f;
 	}
 }
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//Functions for GS with FFT propagation
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//Compute the phase in SLM pixels and set amplitude to unity or Laser amp
+////////////////////////////////////////////////////////////////////////////////
+__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, bool getpSLM255, unsigned char *g_pSLM255_uc,
+								unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if (idx<c_N_pixels[0])
+	{
+		float aLaser = 1.0f;//g_aLaser[idx];
+		
+		cufftComplex cAmp = g_cAmp[idx];
+ 		float pSLM2pi_f = atan2f(cAmp.y, cAmp.x);
 
+ 		if (c_useRPC_b[0])
+		{	
+			float pSLMstart = g_pSLMstart[idx];
+			if (fabs(pSLM2pi_f - pSLMstart) > c_alphaRPC_f[0])
+				pSLM2pi_f = pSLMstart;
+		}
+		
+		if (getpSLM255)
+		{
+			if (c_useRPC_b[0])
+				g_pSLMstart[idx] = pSLM2pi_f;
+
+			//float phase255;
+			int X_int = getXint(idx);
+			int Y_int = getYint(idx, X_int);
+			int shiftedidx = fftshift(idx, X_int, Y_int);
+
+			if (c_useAberrationCorr_b[0])
+				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[shiftedidx]);
+			
+			if (c_usePolLUT_b[0])
+			{
+				if (X_int > c_half_w[0])
+					X_int = X_int - c_data_w[0];
+				if (Y_int > c_half_w[0])
+					Y_int = Y_int - c_data_w[0];
+				float X = c_SLMpitch_f[0]*X_int;
+				float Y = c_SLMpitch_f[0]*Y_int;
+				int tid = threadIdx.x;
+				__shared__ float s_LUTcoeff[120];
+				if (tid < c_N_PolLUTCoeff[0])
+					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+				__syncthreads();
+				g_pSLM255_uc[shiftedidx] = applyPolLUT(pSLM2pi_f, c_SLMpitch_f[0]*(float)X, c_SLMpitch_f[0]*(float)Y, s_LUTcoeff);
+			}
+			else if (c_applyLUT_b[0])
+			{
+				int tid = threadIdx.x;
+				if (!c_usePolLUT_b[0])
+				{
+					__shared__ unsigned char s_LUT[256];
+					if (tid < 256)
+						s_LUT[tid] = g_LUT[tid];
+					__syncthreads();
+					g_pSLM255_uc[shiftedidx] = s_LUT[phase2int32(pSLM2pi_f)];
+				}
+			}
+			else
+				g_pSLM255_uc[shiftedidx] = phase2uc(pSLM2pi_f);
+		}
+
+		g_cAmp[idx].x = aLaser*cosf(pSLM2pi_f);
+		g_cAmp[idx].y = aLaser*sinf(pSLM2pi_f);
+
+	}
+	__syncthreads();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Adjust amplitudes in spot positions 
+////////////////////////////////////////////////////////////////////////////////
+__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration)
+{
+	int tid = threadIdx.x;
+	int spotIndex;
+	float pSpot;
+	__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
+	float weight;
+	cufftComplex cSpotAmp_cc;
+
+	if (tid<c_N_spots[0])
+	{
+		spotIndex = c_spotIndex[tid];
+		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
+		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
+		s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/c_amp[tid];
+		if (iteration != 0)
+			weight = g_weight[tid + iteration*c_N_spots[0]];
+		else
+		{
+			s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
+			weight = c_amp[tid];	
+		}	
+	}	
+	__syncthreads();	
+				
+	//compute weights 
+	if  (tid==0)
+	{
+		float ISpot_sum = 0.0f;
+		for (int jj=0; jj<c_N_spots[0];jj++)
+		{	
+			ISpot_sum += s_aSpot[jj]*s_aSpot[jj];		
+		}
+		s_ISpotsMeanSq = sqrtf(ISpot_sum / (float)c_N_spots[0]);				//integer division!!
+	}
+	__syncthreads();
+	if (tid<c_N_spots[0])												
+	{
+		weight = weight * s_ISpotsMeanSq / s_aSpot[tid];   
+		cSpotAmp_cc.x = cosf(pSpot) * weight;
+		cSpotAmp_cc.y = sinf(pSpot) * weight;
+		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+
+		if (last_iteration)
+			g_weight[tid] = weight;
+		else
+			g_weight[c_N_spots[0] * (iteration + 1) + tid] = weight;
+		if (c_saveI_b[0])
+			g_Iobtained[c_N_spots[0] * (iteration) + tid] = s_aSpot[tid]*s_aSpot[tid];
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Adjust amplitudes in spot positions 
+////////////////////////////////////////////////////////////////////////////////
+__global__ void ReplaceAmpsSpotsDC_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	int spotIndex;
+	float pSpot;
+	//__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
+	float weight;
+	cufftComplex cSpotAmp_cc;
+	if (idx<c_N_spots[0])
+	{
+		spotIndex = c_spotIndex[idx];
+		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
+		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
+		float aSpot = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/c_amp[idx];
+		if (iteration != 0)
+			weight = g_weight[idx + iteration*c_N_spots[0]];
+		else
+		{
+			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara så här med DC?
+			weight = c_amp[idx]/(c_N_pixels_f[0]);	
+		}
+		weight = weight / aSpot;   
+		cSpotAmp_cc.x = cosf(pSpot) * weight;
+		cSpotAmp_cc.y = sinf(pSpot) * weight;
+		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+		if (last_iteration)
+			g_weight[idx] = weight;
+		else
+			g_weight[c_N_spots[0] * (iteration + 1) + idx] = weight;
+		if (c_saveI_b[0])
+			g_Iobtained[c_N_spots[0] * (iteration) + idx] = aSpot*aSpot;
+	}	
+
+	int X_int = getXint(idx);
+	int Y_int = getYint(idx, X_int);
+	if (((X_int > (c_half_w[0] - c_DCborderWidth[0]))&&(X_int < ((c_half_w[0]-1) + c_DCborderWidth[0])))||((Y_int > (c_half_w[0] - c_DCborderWidth[0]))&&(Y_int < ((c_half_w[0]-1) + c_DCborderWidth[0]))))
+	{
+		g_cSpotAmpNew_cc[idx].x = g_cSpotAmp_cc[idx].x/(c_N_pixels_f[0]);
+		g_cSpotAmpNew_cc[idx].y = g_cSpotAmp_cc[idx].y/(c_N_pixels_f[0]);
+	}
+}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//Misc help functions
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+__global__ void testfunc(float *testdata)
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	testdata[idx] = idx;
+}
 ////////////////////////////////////////////////////////////////////////////////
 //Convert from unsigned char [0, 255] to float [-pi, pi]
 ////////////////////////////////////////////////////////////////////////////////
@@ -1483,7 +1590,6 @@ __global__ void c_cc2re_f(float *g_p, cufftComplex *g_c, int M)
 	}
 	__syncthreads();
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 //Copy imaginary part from complex
 ////////////////////////////////////////////////////////////////////////////////
@@ -1496,149 +1602,248 @@ __global__ void c_cc2im_f(float *g_p, cufftComplex *g_c, int M)
 	}
 	__syncthreads();
 }
-
 ////////////////////////////////////////////////////////////////////////////////
-//Adjust amplitudes in SLM pixels
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, bool getpSLM255, unsigned char *g_pSLM255_uc,
-								unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f)
+//Custom debug functions
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+inline void mSafeCall(cudaError_t status, int line, char *file)
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	
-	if (idx<c_N_pixels[0])
+#ifdef M_CUDA_DEBUG
+	do
 	{
-		float aLaser = 1.0f;//g_aLaser[idx];
-		
-		cufftComplex cAmp = g_cAmp[idx];
- 		float pSLM2pi_f = atan2f(cAmp.y, cAmp.x);
-
- 		if (c_useRPC_b[0])
-		{	
-			float pSLMstart = g_pSLMstart[idx];
-			if (fabs(pSLM2pi_f - pSLMstart) > c_alphaRPC_f[0])
-				pSLM2pi_f = pSLMstart;
-		}
-		
-		if (getpSLM255)
+		if(status != cudaSuccess)
 		{
-			if (c_useRPC_b[0])
-				g_pSLMstart[idx] = pSLM2pi_f;
-
-			//float phase255;
-			int X_int = getXint(idx);
-			int Y_int = getYint(idx, X_int);
-			int shiftedidx = fftshift(idx, X_int, Y_int);
-
-			if (c_useAberrationCorr_b[0])
-				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[shiftedidx]);
-			
-			if (c_usePolLUT_b[0])
-			{
-				if (X_int > c_half_w[0])
-					X_int = X_int - c_data_w[0];
-				if (Y_int > c_half_w[0])
-					Y_int = Y_int - c_data_w[0];
-				float X = c_SLMpitch_f[0]*X_int;
-				float Y = c_SLMpitch_f[0]*Y_int;
-				int tid = threadIdx.x;
-				__shared__ float s_LUTcoeff[120];
-				if (tid < c_N_PolLUTCoeff[0])
-					s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
-				__syncthreads();
-				g_pSLM255_uc[shiftedidx] = applyPolLUT(pSLM2pi_f, c_SLMpitch_f[0]*(float)X, c_SLMpitch_f[0]*(float)Y, s_LUTcoeff);
-			}
-			else if (c_applyLUT_b[0])
-			{
-				int tid = threadIdx.x;
-				if (!c_usePolLUT_b[0])
-				{
-					__shared__ unsigned char s_LUT[256];
-					if (tid < 256)
-						s_LUT[tid] = g_LUT[tid];
-					__syncthreads();
-					g_pSLM255_uc[shiftedidx] = s_LUT[phase2int32(pSLM2pi_f)];
-				}
-			}
-			else
-				g_pSLM255_uc[shiftedidx] = phase2uc(pSLM2pi_f);
+			char CUDAmessage[200] = "CUDA says: ";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			if (status != CUFFT_SUCCESS)
+			exit(-1);
 		}
+		cudaDeviceSynchronize();
+		status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+	}while(0);
+#endif
+	return;
+}
+inline void mCufftSafeCall(cufftResult_t status, int line, char *file)
+{
+#ifdef M_CUDA_DEBUG
+	if(status != CUFFT_SUCCESS)
+	{
+		char CUDAmessage[200] = "CUFFT error, CUDA says:\n ";
+		switch (status) {
+            case CUFFT_INVALID_PLAN:   strcat(CUDAmessage,"CUFFT_INVALID_PLAN\n");break;
+            case CUFFT_ALLOC_FAILED:   strcat(CUDAmessage,"CUFFT_ALLOC_FAILED\n");break;
+            case CUFFT_INVALID_TYPE:   strcat(CUDAmessage,"CUFFT_INVALID_TYPE\n");break;
+            case CUFFT_INVALID_VALUE:  strcat(CUDAmessage,"CUFFT_INVALID_VALUE\n");break;
+            case CUFFT_INTERNAL_ERROR: strcat(CUDAmessage,"CUFFT_INTERNAL_ERROR\n");break;
+            case CUFFT_EXEC_FAILED:    strcat(CUDAmessage,"CUFFT_EXEC_FAILED\n");break;
+            case CUFFT_SETUP_FAILED:   strcat(CUDAmessage,"CUFFT_SETUP_FAILED\n");break;
+            case CUFFT_INVALID_SIZE:   strcat(CUDAmessage,"CUFFT_INVALID_SIZE\n");break;
+            case CUFFT_UNALIGNED_DATA: strcat(CUDAmessage,"CUFFT_UNALIGNED_DATA\n");break;
+            default: strcat(CUDAmessage,"CUFFT Unknown error code\n");
 
-		g_cAmp[idx].x = aLaser*cosf(pSLM2pi_f);
-		g_cAmp[idx].y = aLaser*sinf(pSLM2pi_f);
-
+		}
+		sprintf(CUDAmessage,	"%son line: %d\nin file: %s", CUDAmessage, line, file);
+		AfxMessageBox(CUDAmessage);
+		exit(-1);
 	}
-	__syncthreads();
+	cudaDeviceSynchronize();
+	cudaError_t status2 = cudaGetLastError();
+	if(status2!=cudaSuccess)
+	{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status2));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+	}
+#endif
+	return;
+}
+inline void mCheckError(int line, char *file)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		cudaError_t status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA says: ";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+		cudaDeviceSynchronize();
+		status = cudaGetLastError();
+		if(status!=cudaSuccess)
+		{
+			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
+			strcat(CUDAmessage,	cudaGetErrorString(status));
+			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
+			AfxMessageBox(CUDAmessage);
+			exit(-1);
+		}
+	}while(0);
+#endif
+	return;
+}
+
+
+inline void mDisplayDataF(float *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		float *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (float*)malloc(length * sizeof (float));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(float), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %f", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataCC(cufftComplex *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 25;
+		cufftComplex *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (cufftComplex*)malloc(length * sizeof (cufftComplex));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(cufftComplex), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s re: %f im: %f", MessageString, h_data[ii].x, h_data[ii].y);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataUC(unsigned char *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		unsigned char *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (unsigned char*)malloc(length * sizeof (unsigned char));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(unsigned char), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %hhu", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
+}
+inline void mDisplayDataI(int *d_data, int length, int line)
+{
+#ifdef M_CUDA_DEBUG
+	do
+	{
+		int maxlength = 50;
+		int *h_data;
+		length = (length<=maxlength) ? length : maxlength;
+		char MessageString[1000];
+		h_data = (int*)malloc(length * sizeof (int));
+		M_SAFE_CALL(cudaMemcpy(h_data, d_data, length*sizeof(int), cudaMemcpyDeviceToHost));
+		sprintf(MessageString,	"Line: %d\nData: ", line);
+		for (int ii = 0;ii<length;++ii)
+		{
+			sprintf(MessageString,	"%s %d", MessageString, h_data[ii]);
+		}
+		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		free(h_data);
+	}while(0);
+#endif
+	return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//Adjust amplitudes in spot positions 
+//Calculate amplitudes in positions given by x, y, and z from a given hologram
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_amplitude, float *g_weight, bool last_iteration)
+/*extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps)
 {
-	int tid = threadIdx.x;
-	int spotIndex;
-	float pSpot;
-	__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
-	float weight;
-	cufftComplex cSpotAmp_cc;
-
-	if (tid<c_N_spots[0])
+	float *d_xall, *d_yall, *d_zall, *d_Iobtained_all;
+	cudaMalloc((void**)&d_xall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_yall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_zall, N_spots_all*sizeof(float) );
+	cudaMalloc((void**)&d_Iobtained_all, N_spots_all*sizeof(float) );
+	cudaMemcpy(d_xall, x_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
+	cudaMemcpy(d_yall, y_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);	
+	cudaMemcpy(d_zall, z_spots, N_spots_all*sizeof(float), cudaMemcpyHostToDevice);
+	
+	cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
+	int offset = 0;
+	int N_spots_rem = N_spots_all;
+	int N_spots_this;
+	while (N_spots_rem > 0)
 	{
-		spotIndex = c_spotIndex[tid];
-		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
-		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
-		s_aSpot[tid] = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/c_amp[tid];
-		if (iteration != 0)
-			weight = g_weight[tid + iteration*c_N_spots[0]];
-		else
-		{
-			s_aSpot[tid] = (s_aSpot[tid]<0.5f) ? 0.5f : s_aSpot[tid];
-			weight = c_amp[tid];	
-		}	
-	}	
-	__syncthreads();	
-				
-	//compute weights 
-	if  (tid==0)
-	{
-		float ISpot_sum = 0.0f;
-		for (int jj=0; jj<c_N_spots[0];jj++)
-		{	
-			ISpot_sum += s_aSpot[jj]*s_aSpot[jj];		
-		}
-		s_ISpotsMeanSq = sqrtf(ISpot_sum / (float)c_N_spots[0]);				//integer division!!
+		N_spots_this = (N_spots_rem > 512) ? 512 : N_spots_rem;
+		calculateIobtained<<< N_spots_this, 512>>>(d_xall+offset, d_yall+offset, d_zall+offset, d_pSLM_uc, d_Iobtained_all+offset, N_spots_this);
+		cudaDeviceSynchronize();
+		
+		N_spots_rem -= 512;
+		offset += 512;
 	}
-	__syncthreads();
-	if (tid<c_N_spots[0])												
-	{
-		weight = weight * s_ISpotsMeanSq / s_aSpot[tid];   
-		cSpotAmp_cc.x = cosf(pSpot) * weight;
-		cSpotAmp_cc.y = sinf(pSpot) * weight;
-		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
+	cudaMemcpy(h_amps, d_Iobtained_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
+	
+	cudaFree(d_xall);
+	cudaFree(d_yall);
+	cudaFree(d_zall);
+	cudaFree(d_Iobtained_all);
+	
+	status = cudaGetLastError();
 
-		if (last_iteration)
-			g_weight[tid] = weight;
-		else
-			g_weight[c_N_spots[0] * (iteration + 1) + tid] = weight;
-		if (c_saveAmps_b[0])
-			g_amplitude[c_N_spots[0] * (iteration) + tid] = s_aSpot[tid];
-	}
-}
-////////////////////////////////////////////////////////////////////////////////
-//Convert from coordinates to spot indices
-////////////////////////////////////////////////////////////////////////////////
-/*__global__ void XYtoIndex()
+	return status;
+}*/
+//compute amps for constant total int
+/*void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
 {
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	
-	if (i < c_N_spots[0])
-		c_spotIndex[i] = ((int)(c_x[i])&(c_data_w[0]-1))  + ((int)(c_y[i])&(c_data_w[0]-1))* c_data_w[0];
-	
-	__syncthreads();
+	float SLMsize = (float)SLM_SIZE;
+	float Isum = 0.0f;
+	for (int i = 0; i<N_spots; i++)
+		Isum += h_I[i];
+	for (int j = 0; j<N_spots; j++)
+	{
+		float sincx_rec = 1.0f;//= (x==0)? 1.0f:((M_PI*x[j]/SLMsize)/sinf(M_PI*x[j]/SLMsize));
+		float sincy_rec = 1.0f;//(y==0)? 1.0f:((M_PI*y[j]/SLMsize)/sinf(M_PI*y[j]/SLMsize));
+		h_desiredAmp[j] = (h_I[j] <= 0.0f) ? 1.0f:(sincx_rec * sincy_rec * sqrtf(e_desired*h_I[j]/Isum)*SLMsize*SLMsize);
+	}
 }*/
 
 /*
-
 ////////////////////////////////////////////////////////////////////////////////
 //Obtain phases in SLM plane (ALTERNATIVE VERSION)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1648,8 +1853,8 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 								float *g_y, 
 								float *g_z, 
 								float *g_I, 
-								float *g_cSpotAmpRe, 
-								float *g_cSpotAmpIm, 
+								float *g_spotRe_f, 
+								float *g_spotIm_f, 
 								float *g_pSLM2pi, 
 								int N_pixels, 
 								int N_spots, 
@@ -1683,11 +1888,11 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 
 		if (tid<c_N_spots[0])
 		{
-			float cSpotAmpRe = g_cSpotAmpRe[tid];
-			float cSpotAmpIm = g_cSpotAmpIm[tid];
-			s_pSpot[tid] = atan2f(cSpotAmpIm, cSpotAmpRe);
+			float spotRe_f = g_spotRe_f[tid];
+			float spotIm_f = g_spotIm_f[tid];
+			s_pSpot[tid] = atan2f(spotIm_f, spotRe_f);
 
-			s_weight[tid] = g_weights[tid + iteration*c_N_spots[0]] * sqrtf(g_I[tid])/hypotf(cSpotAmpRe, cSpotAmpIm);
+			s_weight[tid] = g_weights[tid + iteration*c_N_spots[0]] * sqrtf(g_I[tid])/hypotf(spotRe_f, spotIm_f);
 
 			s_xm[tid] = g_x[tid];
 			s_ym[tid] = g_y[tid];
@@ -1716,11 +1921,7 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 		//get pixel coordinates
  		float X = c_SLMpitch_f[0] * ((float)threadIdx.x - 256.0f);				//512!
  		float Y = c_SLMpitch_f[0] * ((float)blockIdx.x - 256.0f);
-		
-		//change this to allow data_w!=512
-		//float X = c_SLMpitch_f[0]*((float)(idx%data_w) - (float)data_w/2.0f);
-		//float Y = c_SLMpitch_f[0]*((float)(floor((float)idx/(float)data_w)) - (float)data_w/2.0f);
-		
+
 		//compute SLM pSpot by summing contribution from all spots
 		for (int k=0; k<c_N_spots[0]; k++)
 		{
@@ -1768,76 +1969,3 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
 	}
 }*/
-
-////////////////////////////////////////////////////////////////////////////////
-//Adjust amplitudes in spot positions
-////////////////////////////////////////////////////////////////////////////////
-__global__ void ReplaceAmpsSpots_FFT_DC(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_amplitude, float *g_weight, bool last_iteration)
-{
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-	int spotIndex;
-	float pSpot;
-	//__shared__ float s_aSpot[MAX_SPOTS], s_ISpotsMeanSq;
-	float weight;
-	cufftComplex cSpotAmp_cc;
-	if (idx<c_N_spots[0])
-	{
-		spotIndex = c_spotIndex[idx];
-		cSpotAmp_cc = g_cSpotAmp_cc[spotIndex];
-		pSpot = atan2f(cSpotAmp_cc.y, cSpotAmp_cc.x);
-		float aSpot = hypotf(cSpotAmp_cc.x, cSpotAmp_cc.y)/c_amp[idx];
-		if (iteration != 0)
-			weight = g_weight[idx + iteration*c_N_spots[0]];
-		else
-		{
-			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara så här med DC?
-			weight = c_amp[idx]/(c_N_pixels_f[0]);	
-		}
-		weight = weight / aSpot;   
-		cSpotAmp_cc.x = cosf(pSpot) * weight;
-		cSpotAmp_cc.y = sinf(pSpot) * weight;
-		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
-		if (last_iteration)
-			g_weight[idx] = weight;
-		else
-			g_weight[c_N_spots[0] * (iteration + 1) + idx] = weight;
-		if (c_saveAmps_b[0])
-			g_amplitude[c_N_spots[0] * (iteration) + idx] = aSpot;
-	}	
-	
-				
-	//compute weights 
-	/*if  (idx==0)
-	{
-		float ISpot_sum = 0.0f;
-		for (int jj=0; jj<c_N_spots[0];jj++)
-		{	
-			ISpot_sum += s_aSpot[jj]*s_aSpot[jj];		
-		}
-		s_ISpotsMeanSq = sqrtf(ISpot_sum / (float)c_N_spots[0]);				//integer division!!
-	}
-	__syncthreads();
-	if (idx<c_N_spots[0])												
-	{
-		weight = weight * s_ISpotsMeanSq / s_aSpot[idx];   
-		cSpotAmp_cc.x = cosf(pSpot) * weight;
-		cSpotAmp_cc.y = sinf(pSpot) * weight;
-		g_cSpotAmpNew_cc[spotIndex] = cSpotAmp_cc;
-
-		if (last_iteration)
-			g_weight[idx] = weight;
-		else
-			g_weight[c_N_spots[0] * (iteration + 1) + idx] = weight;
-		if (save_amps)
-			g_amplitude[c_N_spots[0] * (iteration) + idx] = s_aSpot[idx];
-	}
-*/
-	int X_int = getXint(idx);
-	int Y_int = getYint(idx, X_int);
-	if (((X_int > (c_half_w[0] - c_DCborderWidth[0]))&&(X_int < ((c_half_w[0]-1) + c_DCborderWidth[0])))||((Y_int > (c_half_w[0] - c_DCborderWidth[0]))&&(Y_int < ((c_half_w[0]-1) + c_DCborderWidth[0]))))
-	{
-		g_cSpotAmpNew_cc[idx].x = g_cSpotAmp_cc[idx].x/(c_N_pixels_f[0]);
-		g_cSpotAmpNew_cc[idx].y = g_cSpotAmp_cc[idx].y/(c_N_pixels_f[0]);
-	}
-}
