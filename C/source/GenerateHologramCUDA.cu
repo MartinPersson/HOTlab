@@ -77,7 +77,7 @@
 #endif
 
 #define MAX_SPOTS 256	//decrease this if your GPU keeps running out of memory
-#define BLOCK_SIZE 512	//should be a power of 2
+#define BLOCK_SIZE 256	//should be a power of 2
 #define SLM_SIZE 512
 #if ((SLM_SIZE==16)||(SLM_SIZE==32)||(SLM_SIZE==64)||(SLM_SIZE==128)||(SLM_SIZE==256)||(SLM_SIZE==512)||(SLM_SIZE==1024)||(SLM_SIZE==2048))
 #define SLMPOW2			//Uses bitwize modulu operations if teh SLM size is a power of 2
@@ -95,7 +95,6 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 __global__ void setActiveRegionToZero(cufftComplex *g_Farfield);
 __global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spotRe_f, float *g_spotIm_f);
 __global__ void PropagateToSpotPositionsDC_Fresnel(float *g_pSLM_f, float *g_obtainedPhase, float *g_weights, float *g_Iobtained, int iteration);
-__global__ void getPhases(unsigned char *g_pSLMuc, float *g_pSLMstart, cufftComplex *g_cSLMcc, float *g_LUT_coeff, int LUT_on, int data_w);
 __global__ void ReplaceAmpsSLM_FFT(float *g_aLaser, cufftComplex *g_cAmp, float *g_pSLMstart, bool getpSLM255, unsigned char *g_pSLM255_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f);
 __global__ void ReplaceAmpsSpots_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration);
 __global__ void ReplaceAmpsSpotsDC_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex *g_cSpotAmpNew_cc, int iteration, float *g_Iobtained, float *g_weight, bool last_iteration);
@@ -925,8 +924,8 @@ __global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained)
 	int tid = threadIdx.x;
 	int i = tid;
 	
-	__shared__ float s_Vre[BLOCK_SIZE];
-	__shared__ float s_Vim[BLOCK_SIZE];
+	__shared__ float s_Vre[SLM_SIZE];
+	__shared__ float s_Vim[SLM_SIZE];
 
 	s_Vre[tid] = 0.0f;
 	s_Vim[tid] = 0.0f;
@@ -954,7 +953,7 @@ __global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained)
 		s_Vim[tid] += s_Vim[tid + 512];
 	} */
 	__syncthreads(); 
-	if (tid < 256) 
+	if ((tid < 256)&&(SLM_SIZE>256)) 
 	{ 
 		s_Vre[tid] += s_Vre[tid + 256]; 
 		s_Vim[tid] += s_Vim[tid + 256];
@@ -1001,8 +1000,8 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spot
 	int tid = threadIdx.x;
 	int i = tid;
 	
-	__shared__ float s_Vre[BLOCK_SIZE];		
-	__shared__ float s_Vim[BLOCK_SIZE];
+	__shared__ float s_Vre[SLM_SIZE];		
+	__shared__ float s_Vim[SLM_SIZE];
 	s_Vre[tid] = 0.0f;
 	s_Vim[tid] = 0.0f;
 	int blockSize = blockDim.x;
@@ -1029,7 +1028,7 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spot
 	} */
 	__syncthreads(); 
 
-	if (tid < 256) 
+	if ((tid < 256)&&(SLM_SIZE>256))  
 	{ 
 		s_Vre[tid] += s_Vre[tid + 256]; 
 		s_Vim[tid] += s_Vim[tid + 256];
@@ -1090,7 +1089,7 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(float *g_pSLM_f, float *g_obt
 
 	__syncthreads();
  	
-	if (tid < 256)
+	if ((tid < 256)&&(SLM_SIZE>256)) 
 	{ 
 		s_Vre[tid] += s_Vre[tid + 256]; 
 		s_Vim[tid] += s_Vim[tid + 256];
