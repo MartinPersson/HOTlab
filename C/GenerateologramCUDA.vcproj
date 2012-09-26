@@ -37,7 +37,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				PtxAsOptionV="true"
 				Keep="false"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -50,7 +55,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="0"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
@@ -83,6 +92,7 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="1"
+				OptimizeForWindows98="1"
 				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
@@ -123,6 +133,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -136,7 +152,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="0"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
@@ -169,6 +189,7 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="1"
+				OptimizeForWindows98="1"
 				DataExecutionPrevention="0"
 				TargetMachine="17"
 			/>
@@ -212,7 +233,7 @@
 			<Tool
 				Name="Cudart Build Rule"
 				Arch1="11"
-				Arch2="13"
+				Arch2="20"
 				Arch3="30"
 				MaxRegCount="0"
 				PtxAsOptionV="true"
@@ -231,12 +252,16 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -261,6 +286,7 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -301,6 +327,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -315,7 +347,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -334,16 +369,17 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
+				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib Nafxcw.lib Libcmt.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH64)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -383,7 +419,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				PtxAsOptionV="true"
 				Keep="false"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -396,10 +437,15 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="0"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
+				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
 			/>
 			<Tool
@@ -421,6 +467,7 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
+				OptimizeForWindows98="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -459,6 +506,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -472,7 +525,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="0"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -497,6 +554,7 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -536,7 +594,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				PtxAsOptionV="true"
 				Keep="false"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -549,9 +612,15 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="2"
+				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -573,6 +642,7 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
+				OptimizeForWindows98="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -611,6 +681,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -624,6 +700,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="2"
@@ -648,95 +729,8 @@
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release_SM20_NoSLM|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="Cudart Build Rule"
-				Arch1="11"
-				Arch3="30"
-				PtxAsOptionV="true"
-				Keep="false"
-				FastMath="true"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib Nafxcw.lib Libcmt.lib"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
-				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
-				ModuleDefinitionFile=""
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -776,6 +770,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -790,7 +790,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -819,6 +822,7 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -861,6 +865,7 @@
 			<Tool
 				Name="Cudart Build Rule"
 				Arch1="11"
+				Arch2="20"
 				Arch3="30"
 				PtxAsOptionV="true"
 				Keep="false"
@@ -878,12 +883,16 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -907,6 +916,7 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -947,6 +957,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -961,7 +977,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -980,16 +999,17 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib cutil32.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
+				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib LoadHologramPCIe64\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH64)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
 				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
 				ModuleDefinitionFile=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -1032,6 +1052,7 @@
 			<Tool
 				Name="Cudart Build Rule"
 				Arch1="11"
+				Arch2="20"
 				Arch3="30"
 				PtxAsOptionV="true"
 				Keep="false"
@@ -1049,12 +1070,16 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -1078,6 +1103,7 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1118,6 +1144,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1132,7 +1164,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -1161,92 +1196,8 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release_SM20_PCISLM|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="Cudart Build Rule"
-				Keep="false"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalOptions="cc -DMAX_SPOTS = 512"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib LoadHologramPCI\Bnsboard.lib Nafxcw.lib Libcmt.lib"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
-				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
-				ModuleDefinitionFile=""
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -1286,6 +1237,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1300,7 +1257,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -1329,92 +1289,8 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release_SM20_PCIeSLM|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;$(TargetPath)"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="Cudart Build Rule"
-				Keep="false"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalOptions="cc -DMAX_SPOTS = 512"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEHOLOGRAMCUDA_EXPORTS"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib LoadHologramPCIe\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
-				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
-				ModuleDefinitionFile=""
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -1454,6 +1330,12 @@
 			/>
 			<Tool
 				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -1468,7 +1350,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -1497,6 +1382,101 @@
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
+				TargetMachine="17"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="PCIeSLM64|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="2"
+			CharacterSet="2"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="Cudart Build Rule"
+				Arch1="11"
+				Arch2="20"
+				Arch3="30"
+				TargetMachinePlatform="1"
+				PtxAsOptionV="true"
+				FastMath="true"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;GENERATEOLOGRAMCUDA_EXPORTS"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="cudart.lib kernel32.lib cufft.lib LoadHologramPCIe64\PCIeBoard.lib Nafxcw.lib Libcmt.lib"
+				LinkIncremental="1"
+				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH64)&quot;;&quot;$(NVSDKCOMPUTE_ROOT)\C\common\lib&quot;;&quot;$(DevEnvDir)VC\atlmfc\lib&quot;"
+				IgnoreDefaultLibraryNames="Nafxcw.lib;Libcmt.lib"
+				ModuleDefinitionFile=""
+				GenerateDebugInformation="true"
+				SubSystem="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				OptimizeForWindows98="1"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -1546,6 +1526,14 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="Release_PCIeSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release_PCISLM|Win32"
 					ExcludedFromBuild="true"
 					>
@@ -1554,7 +1542,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_PCISLM|Win32"
+					Name="Release_PCISLM|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1562,7 +1550,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
+					Name="PCIeSLM64|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1574,6 +1562,14 @@
 				RelativePath=".\LoadHologramPCI\LoadHologram.cpp"
 				>
 				<FileConfiguration
+					Name="Debug|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="Release_NoSLM|Win32"
 					ExcludedFromBuild="true"
 					>
@@ -1582,7 +1578,31 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
+					Name="Release_NoSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuDebug|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuRelease|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1598,7 +1618,23 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_PCIeSLM|Win32"
+					Name="Release_PCIeSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCISLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCISLM|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1607,7 +1643,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
+				RelativePath=".\LoadHologramPCIe64\LoadHologram.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -1619,6 +1655,14 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_NoSLM|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1642,7 +1686,99 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_NoSLM|Win32"
+					Name="Release_PCIeSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCISLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\LoadHologramPCIe\LoadHologram.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_NoSLM|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_NoSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuDebug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuDebug|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuRelease|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="EmuRelease|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_NoSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_PCIeSLM|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool
@@ -1658,7 +1794,31 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_SM20_PCISLM|Win32"
+					Name="Release_PCISLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCISLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_SM20_PCIeSLM|x64"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="PCIeSLM64|x64"
 					ExcludedFromBuild="true"
 					>
 					<Tool

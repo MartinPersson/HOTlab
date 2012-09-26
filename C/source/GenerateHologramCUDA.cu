@@ -1077,7 +1077,7 @@ __global__ void PropagateToSpotPositionsDC_Fresnel(float *g_pSLM_f, float *g_obt
 
 	int X_int = getXint(i);
 	X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
-	Y = 0.5f;
+	Y = -0.5f;
 	while (i < c_N_pixels[0]) 
 	{
 		p = g_pSLM_f[i] - M_PI * (c_z[spot_number] * (X*X + Y*Y) + 2.0f * (X * c_x[spot_number] + Y * c_y[spot_number]));	
