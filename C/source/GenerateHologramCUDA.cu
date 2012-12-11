@@ -60,7 +60,7 @@
 //-Allow variable spot phases for Lenses and Prisms
 ////////////////////////////////////////////////////////////////////////////////
 
-//#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
+#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
 
 ////////////////////////////////////////////////////////////////////////////////
 //Includes
@@ -86,6 +86,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // forward declarations
 ////////////////////////////////////////////////////////////////////////////////
+__global__ void ApplyCorrections(unsigned char *g_pSLM_uc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f);
 __global__ void LensesAndPrisms(unsigned char *g_SLMuc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f);
 __global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained);
 __global__ void PropagateToSLM_Fresnel(float *g_spotRe_f, float *g_spotIm_f, float *g_pSLM2pi, float *g_weights, int iteration, float *g_pSLMstart, float *g_amps,
@@ -335,10 +336,16 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
 			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 			break;
+		case 100:
+			////////////////////////////////////////////////////////////////////////////////////////////
+			//Appply corrections to pre-calculated hologram
+			////////////////////////////////////////////////////////////////////////////////////////////
+			M_SAFE_CALL(cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice));
+			ApplyCorrections<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+			break;
 		default:
 			break;
-
-			//case 3: Apply corrections on h_pSLM_uc (yet to be implemented)
 	}
 	//load image to the PCIe hardware  SLMstuff
 	if(EnableSLM_b)
@@ -585,6 +592,11 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 /////////////////////////////////////////////////////////////////////////////////
 //Device functions
 /////////////////////////////////////////////////////////////////////////////////
+
+__device__ float uc2phase(float uc)
+{
+	return (float)uc*2.0f*M_PI/256.0f - M_PI;
+}
 __device__ unsigned char phase2uc(float phase2pi)
 {
 	return (unsigned char)floor((phase2pi + M_PI)*256.0f / (2.0f * M_PI));
@@ -863,6 +875,41 @@ inline void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int
 	cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);
 	if (method == 2)
 		cudaMemcpyToSymbol(c_spotIndex, h_spotIndex, N_spots*sizeof(int), 0, cudaMemcpyHostToDevice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//Apply corrections to precalculated hologram
+////////////////////////////////////////////////////////////////////////////////
+__global__ void ApplyCorrections(unsigned char *g_pSLM_uc, unsigned char *g_LUT, float *g_AberrationCorr_f, float *g_LUTPolCoeff_f)
+{
+	int tid = threadIdx.x;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	float pSLM2pi_f = uc2phase(g_pSLM_uc[idx]);
+	if (c_useAberrationCorr_b[0])
+		pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]);
+
+	if (c_usePolLUT_b[0])
+	{
+		int X_int = getXint(idx);
+		int Y_int = getYint(idx, X_int);
+		float X = c_SLMpitch_f[0]*(X_int - c_half_w_f[0]);
+		float Y = c_SLMpitch_f[0]*(Y_int - c_half_w_f[0]);
+		__shared__ float s_LUTcoeff[120];
+		if (tid < c_N_PolLUTCoeff[0])
+			s_LUTcoeff[tid] = g_LUTPolCoeff_f[tid];
+		__syncthreads();
+		g_pSLM_uc[idx] = applyPolLUT(pSLM2pi_f, X, Y, s_LUTcoeff);
+	}
+	else if (c_applyLUT_b[0])
+	{
+		__shared__ unsigned char s_LUT[256];
+		if (tid < 256)
+			s_LUT[tid] = g_LUT[tid];
+		__syncthreads();
+		g_pSLM_uc[idx] = s_LUT[phase2int32(pSLM2pi_f)];
+	}
+	else
+		g_pSLM_uc[idx] = phase2uc(pSLM2pi_f);
 }
 ////////////////////////////////////////////////////////////////////////////////
 //Calculate hologram using "Lenses and Prisms"
