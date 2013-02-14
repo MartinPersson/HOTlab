@@ -33,9 +33,9 @@ bool ReadLUTFile(unsigned char* LUT, CString LUTFileName);
 // FUNCTIONS TO USE IF NO SLM IS INSTALLED
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* LUT, unsigned short TrueFrames)
+extern "C" int InitalizeSLM(bool bRAMWriteEnable, unsigned short TrueFrames)
 {
-	char buffer[_MAX_PATH];
+	//char buffer[_MAX_PATH];
 
 //read in the LUT
 //	_getcwd(buffer, _MAX_PATH);
@@ -45,10 +45,10 @@ extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* 
 //	tmp.Format("LUT Path: %s", LUTPath);
 //	MessageBox(NULL, tmp, "LUT", MB_OK);
 
-	char* tokenPtr;
-	tokenPtr = strtok(LUTFile, " \n");
-	CString LUTPath = LPSTR(tokenPtr);
-	ReadLUTFile(LUT, LUTPath);
+	//char* tokenPtr;
+	//tokenPtr = strtok(LUTFile, " \n");
+	//CString LUTPath = LPSTR(tokenPtr);
+	//ReadLUTFile(LUT, LUTPath);
 
 	return 1;	//tells the main function to apply the LUT in software
 }

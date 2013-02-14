@@ -40,21 +40,24 @@ typedef struct{
 // FUNCTIONS TO TALK TO THE PCIe HARDWARE
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* LUT, unsigned short TrueFrames)
+extern "C" int InitalizeSLM(bool bRAMWriteEnable, unsigned short TrueFrames)
 {
 	char buffer[_MAX_PATH];
 	char buffer2[_MAX_PATH];
 	bool Init = true;
 	bool TestEnable = false;
+	unsigned char LUT[256];
 	theBoard = new CPCIeBoard(&buffer[0],&buffer2[0], Init, TestEnable, bRAMWriteEnable);
 
 	theBoard->SetTrueFrames(TrueFrames);
 	//read in and load the LUT
-	char* tokenPtr;
-	tokenPtr = strtok(LUTFile, " \n");
-	CString LUTPath = LPSTR(tokenPtr);
+	//char* tokenPtr;
+	//tokenPtr = strtok(LUTFile, " \n");
+	//CString LUTPath = LPSTR(tokenPtr);
 
-	ReadLUTFile(LUT, LUTPath);
+	//ReadLUTFile(LUT, LUTPath);
+	for (int ii = 0;ii<256;ii++)
+		LUT[ii] = ii;
 	theBoard->WriteLUT(LUT);
 
 	return 0;		//tells the main program not to apply the LUT in software. 

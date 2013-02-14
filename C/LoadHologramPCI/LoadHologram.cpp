@@ -42,7 +42,7 @@ typedef struct{
 // FUNCTIONS TO TALK TO THE PCI HARDWARE
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* LUT, unsigned short TrueFrames)
+extern "C" int InitalizeSLM(bool bRAMWriteEnable, unsigned short TrueFrames)
 {
 	char buffer[_MAX_PATH];
 	unsigned short LC_Type = 1; //1 = Nematic LC
@@ -70,10 +70,10 @@ extern "C" int InitalizeSLM(bool bRAMWriteEnable, char* LUTFile, unsigned char* 
 //	tmp.Format("LUT Path: %s", LUTPath);
 //	MessageBox(NULL, tmp, "LUT", MB_OK);
 
-	char* tokenPtr;
-	tokenPtr = strtok(LUTFile, " \n");
-	CString LUTPath = LPSTR(tokenPtr);
-	ReadLUTFile(LUT, LUTPath);
+//	char* tokenPtr;
+//	tokenPtr = strtok(LUTFile, " \n");
+//	CString LUTPath = LPSTR(tokenPtr);
+//	ReadLUTFile(LUT, LUTPath);
 
 	//we will have 2 frames of memory that we write images to. This is to avoid conflicts where the hardware
 	//is reading from the same frame in memory that the user is writing to - this would be bad

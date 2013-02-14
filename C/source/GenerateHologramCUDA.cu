@@ -49,9 +49,9 @@
 //-The suffix indicates the data type, no suffix usually indicates an iteger
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
-//-Improve convergence of the GS algorithms for 2 spots.
-//-Compensate spot intensities for distance from center of field.
-//-Put all arguments for device functions and trap positions in constant memory. 
+//-Improve convergence of the GS algorithms for 2 spots.							*done
+//-Compensate spot intensities for distance from center of field.					*done
+//-Put all arguments for device functions and trap positions in constant memory.	*done
 // (Requires all functions to be moved into the same file or the use of some 
 // workaround found on nVidia forum)  	
 //-Put pSLMstart and aLaser in texture memory (may not improve performance on Fermi devices)
@@ -60,7 +60,7 @@
 //-Allow variable spot phases for Lenses and Prisms
 ////////////////////////////////////////////////////////////////////////////////
 
-#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
+//#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
 
 ////////////////////////////////////////////////////////////////////////////////
 //Includes
@@ -103,7 +103,7 @@ __global__ void XYtoIndex();
 __global__ void f2uc(unsigned char *uc, float *f, int N_pixels, unsigned char *g_LUT, int use_linLUT, int data_w);
 __global__ void uc2f(float *f, unsigned char *uc, int N);
 __global__ void p2c(cufftComplex *g_c, float *g_p, int M);
-void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method);
+inline int computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // Custom debug macros
@@ -182,7 +182,7 @@ __device__ __constant__ int c_N_spots[1];
 // Functions to talk to SLM Hardware
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" int InitalizeSLM(	//returns 0 if PCIe hardware is used, 1 if PCI hardware is used
-	bool bRAMWriteEnable, char* LUTFile, unsigned char* LUT, unsigned short TrueFrames
+	bool bRAMWriteEnable, unsigned short TrueFrames
 );
 
 extern "C" void LoadImg(
@@ -213,7 +213,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 	else if (N_spots < 3)
 		method = 0;
 	memsize_spotsf = N_spots*sizeof(float);
-	computeAndCopySpotData(I_spots, x_spots, y_spots, z_spots, N_spots, method);
+	method = computeAndCopySpotData(I_spots, x_spots, y_spots, z_spots, N_spots, method); //sets method to -1 if N_spots == 0.
 
 	switch (method)	{
 		case 0:
@@ -461,7 +461,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
     M_SAFE_CALL(cudaGetDeviceProperties(&deviceProp, deviceId));
     maxThreads_device = deviceProp.maxThreadsPerBlock;
     
-	borderWidthDC_i = 64;
+	borderWidthDC_i = 0;
 
 	int MaxIterations = 1000;
 	data_w = SLM_SIZE;
@@ -530,14 +530,10 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	if(EnableSLM_b)
 	{
 		bool bRAMWriteEnable = false;
-		unsigned char* h_LUT0_uc = new unsigned char[256]; //change this for use with 16-bit interfaces
-		ApplyLUT_b = (bool)InitalizeSLM(bRAMWriteEnable, LUTFile, h_LUT0_uc, TrueFrames);  //InitalizeSLM returns 1 if PCI version is installed, PCIe version returns 0 since it applies LUT in hardware 
-		M_SAFE_CALL(cudaMalloc((void**)&d_LUT_uc, 256));
-		M_SAFE_CALL(cudaMemcpy(d_LUT_uc, h_LUT0_uc, 256, cudaMemcpyHostToDevice));
-		delete []h_LUT0_uc;
+		InitalizeSLM(bRAMWriteEnable, TrueFrames);  //InitalizeSLM returns 1 if PCI version is installed, PCIe version returns 0 since it applies LUT in hardware 
 		SetPower(true);
 	}	
-	
+
 	status = cudaGetLastError();
 	return status;
 }
@@ -586,8 +582,8 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 	//close out communication with the PCIe hardware SLMstuff
 	if(EnableSLM_b)
 		ShutDownSLM();
-
-	return 0;
+	status = cudaGetLastError();
+	return status;
 }
 /////////////////////////////////////////////////////////////////////////////////
 //Device functions
@@ -607,7 +603,7 @@ __device__ int phase2int32(float phase2pi)
 }
 __device__ float ApplyAberrationCorrection(float pSpot, float correction)
 {
-		pSpot = pSpot + correction;		//apply correction
+		pSpot = pSpot - correction;		//apply correction
 		return (pSpot - (2.0f*M_PI) * floor((pSpot+M_PI) / (2.0f*M_PI))); //apply mod([-pi, pi], pSpot) 
 }
 __device__ int getXint(int index)
@@ -855,7 +851,7 @@ __device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int ti
 	s_Vre[tid] += s_Vre[tid + 1];
 	s_Vim[tid] += s_Vim[tid + 1];
 }
-inline void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method)
+inline int computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method)
 {
 	//float Isum = 0.0f;
 	//for (int i = 0; i<N_spots; i++)
@@ -875,6 +871,9 @@ inline void computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int
 	cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);
 	if (method == 2)
 		cudaMemcpyToSymbol(c_spotIndex, h_spotIndex, N_spots*sizeof(int), 0, cudaMemcpyHostToDevice);
+	if (N_spots == 0)
+		method = -1;
+	return method;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1330,11 +1329,15 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 			if (getpSLM255)
 				g_pSLMstart[shiftedidx] = pSLM2pi_f;
 		}		
-
+		
+		g_pSLM_f[idx] = pSLM2pi_f;
+		g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
+		g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
+		
 		if (getpSLM255)					//Compute final SLM phases and write to global memory... 
 		{	
 			if (c_useAberrationCorr_b[0])
-				pSLM2pi_f = ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]); //fftshift??
+				pSLM2pi_f= ApplyAberrationCorrection(pSLM2pi_f, g_AberrationCorr_f[idx]); 
 			if (c_usePolLUT_b[0])
 			{
 				__shared__ float s_LUTcoeff[120];
@@ -1354,9 +1357,6 @@ __global__ void PropagateToSLMDC_Fresnel(float *g_pSpot, float *g_wSpot, cufftCo
 			else
 				g_pSLM255_uc[idx] = phase2uc(pSLM2pi_f);
 		}
-		g_pSLM_f[idx] = pSLM2pi_f;
-		g_cSLM_cc[shiftedidx].x = cosf(pSLM2pi_f);
-		g_cSLM_cc[shiftedidx].y = sinf(pSLM2pi_f);
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////
