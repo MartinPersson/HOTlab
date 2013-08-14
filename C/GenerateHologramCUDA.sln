@@ -54,10 +54,10 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		BuildVersion_BuildVersioningStyle = None.None.None.None
-		BuildVersion_UpdateAssemblyVersion = False
-		BuildVersion_UpdateFileVersion = False
-		BuildVersion_BuildAction = Both
 		BuildVersion_StartDate = 2011/11/15
+		BuildVersion_BuildAction = Both
+		BuildVersion_UpdateFileVersion = False
+		BuildVersion_UpdateAssemblyVersion = False
+		BuildVersion_BuildVersioningStyle = None.None.None.None
 	EndGlobalSection
 EndGlobal

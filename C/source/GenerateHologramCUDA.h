@@ -39,4 +39,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 //Free GPU memory and shut down SLM
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" __declspec(dllexport) int stopCUDAandSLM();
+
+extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps);
+
 #endif

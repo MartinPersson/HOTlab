@@ -55,7 +55,7 @@ extern "C" int InitalizeSLM(bool bRAMWriteEnable, unsigned short TrueFrames)
 		LUT[ii] = ii;
 	theBoard->WriteLUT(LUT);
 
-	return 0;
+	return GetLastError();
 }
 
 extern "C" void LoadImg(unsigned char* Img)
