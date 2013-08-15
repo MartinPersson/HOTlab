@@ -60,7 +60,7 @@
 //-Allow variable spot phases for Lenses and Prisms
 ////////////////////////////////////////////////////////////////////////////////
 
-#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
+//#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
 float dt_milliseconds;
 cudaEvent_t start, stop;
 ////////////////////////////////////////////////////////////////////////////////
