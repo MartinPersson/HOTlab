@@ -4,7 +4,7 @@ The project consists of two parts:
 1. GenerateHologramCUDA.dll - a dll written in C for CUDA which generates holograms on CUDA suported GPUs.
 2. Martins HOT interface - a GUI program for HOT applications written in LabVIEW. 
 
-NOTE: The function calls in GenerateHologramCUDA.dll were updated November 17 2011. If you have an older version of HOTlab and want the new dll, your LabVIEW software must be updated as well. 
+NOTE: Martins HOT interface is temporarily removed due to a major overhaul of the software. 
 
 A quick start guide for the LabVIEW program is located in the "doc" folder along with a detailed description of GenerateHologramCUDA.dll
 The dll is licensed under LGPL and the LabVIEW programs under GPL.
