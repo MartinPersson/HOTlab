@@ -23,23 +23,27 @@
 */
 #ifndef GENERATEHOLOGRAMCUDA_H
 #define GENERATEHOLOGRAMCUDA_H
+
 ////////////////////////////////////////////////////////////////////////////////
 //Generate a hologram 
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
+extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
+
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc);
+extern "C" int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc);
+
 ////////////////////////////////////////////////////////////////////////////////
 //Allocate GPU memory and start up SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId);
+extern "C" int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId);
+
 ////////////////////////////////////////////////////////////////////////////////
 //Free GPU memory and shut down SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int stopCUDAandSLM();
+extern "C" int stopCUDAandSLM();
 
-extern "C" __declspec(dllexport) int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps);
+extern "C" int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps);
 
 #endif
