@@ -63,6 +63,7 @@
 //#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
 float dt_milliseconds;
 cudaEvent_t start, stop;
+
 ////////////////////////////////////////////////////////////////////////////////
 //Includes
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +71,6 @@ cudaEvent_t start, stop;
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include "stdafx.h"
 #include <cufft.h>
 
 #ifndef M_PI
@@ -87,6 +87,7 @@ cudaEvent_t start, stop;
 ////////////////////////////////////////////////////////////////////////////////
 // forward declarations
 ////////////////////////////////////////////////////////////////////////////////
+
 __global__ void ApplyCorrections(unsigned char *g_pSLM_uc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f);
 __global__ void LensesAndPrisms(unsigned char *g_SLMuc, unsigned char *g_LUT, float *d_AberrationCorr_f, float *d_LUTPolCoeff_f);
 __global__ void calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained);
@@ -109,6 +110,7 @@ inline int computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // Custom debug macros
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define M_CHECK_ERROR() mCheckError(__LINE__, __FILE__) 
 #define M_SAFE_CALL(errcode) mSafeCall(errcode, __LINE__, __FILE__)
 #define M_CUFFT_SAFE_CALL(cuffterror) mCufftSafeCall(cuffterror, __LINE__, __FILE__)
@@ -123,9 +125,11 @@ inline void mDisplayDataF(float *d_data, int length, int line);
 inline void mDisplayDataCC(cufftComplex *d_data, int length, int line);
 inline void mDisplayDataUC(unsigned char *d_data, int length, int line);
 inline void mDisplayDataI(int *d_data, int length, int line);
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 //Global declaration
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+
 float *d_x, *d_y, *d_z, *d_I;					//trap coordinates and intensity in GPU memory
 float *d_pSLM_f;								//the optimized pSpot pattern, float [-pi, pi]
 float *d_weights, *d_Iobtained, *d_desiredAmp;		//used h_weights and calculated amplitudes for each spot and each iteration
@@ -156,6 +160,7 @@ float *d_obtainedPhase;
 ///////////////////////////////////////////////////
 //Constant memory declarations
 ///////////////////////////////////////////////////
+
 __device__ __constant__ int c_data_w[1];
 __device__ __constant__ float c_data_w_f[1];
 __device__ __constant__ int c_half_w[1];
@@ -179,33 +184,48 @@ __device__ __constant__ float c_z[MAX_SPOTS];
 __device__ __constant__ float c_desiredAmp[MAX_SPOTS];
 __device__ __constant__ int c_spotIndex[MAX_SPOTS];
 __device__ __constant__ int c_N_spots[1];
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to talk to SLM Hardware
 ////////////////////////////////////////////////////////////////////////////////
+
 extern "C" int InitalizeSLM(	//returns 0 if PCIe hardware is used, 1 if PCI hardware is used
 	bool bRAMWriteEnable, unsigned short TrueFrames
-);
+)
+{
+  return 0;
+}
 
 extern "C" void LoadImg(
 	unsigned char* Img
-);
+)
+{
+}
 
 extern "C" void Wait(
 	int DelayMs
-);
+)
+{
+}
 
 extern "C" void SetPower(
 	bool bPower
-);
+)
+{
+}
 
-extern "C" void ShutDownSLM();
+extern "C" void ShutDownSLM()
+{
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //Public dll functions 
 ////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 //Generate a hologram 
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method)//, float* gpuTime)
+extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method)//, float* gpuTime)
 {
 	//*gpuTime = 0;
 	//float deltaTime = 0;
@@ -227,13 +247,13 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 			//////////////////////////////////////////////////
 			LensesAndPrisms<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
 			M_CHECK_ERROR();
-			cudaDeviceSynchronize();
+			cudaThreadSynchronize();
 			M_CHECK_ERROR();
 			if (saveI_b)
 			{
 				calculateIobtained<<< N_spots, SLM_SIZE>>>(d_pSLM_uc, d_Iobtained);
 				M_CHECK_ERROR();
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*sizeof(float), cudaMemcpyDeviceToHost));
 			}
 			M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
@@ -244,7 +264,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 			////////////////////////////////////////////////////////////////////////////
 			//Uncomment this to start with pre-calculated hologram:
 			//cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
-			//cudaDeviceSynchronize();
+			//cudaThreadSynchronize();
 			//uc2f<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
 			////////////////////////////////////////////////////////////////////////////
 			/*cudaEventCreate(&start);
@@ -268,7 +288,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 				else
 					PropagateToSpotPositions_Fresnel<<< N_spots, SLM_SIZE>>>(d_pSLM_f, d_spotRe_f, d_spotIm_f);
 				M_CHECK_ERROR();
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 				////////////////////////////////////////////////////
 				//Propagate to the SLM plane
 				////////////////////////////////////////////////////
@@ -276,7 +296,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 				if (useDC_b)
 				{
 					M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_FFTo_cc, d_SLM_cc, CUFFT_INVERSE));	
-					cudaDeviceSynchronize();
+					cudaThreadSynchronize();
 					PropagateToSLMDC_Fresnel<<< n_blocks_Phi, BLOCK_SIZE >>>(d_obtainedPhase, d_weights, d_SLM_cc, d_pSLM_f, l, d_pSLMstart_f, (l==(N_iterations-1)), 
 																			d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
 				}
@@ -286,7 +306,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 																			d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
 				}
 				M_CHECK_ERROR();
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 			}
 			/*cudaEventRecord(stop, 0);
 			cudaEventSynchronize(stop); 
@@ -304,21 +324,21 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 			////////////////////////////////////////////////////////////////////////////////////////////
 			//Uncomment this to start with pre-calculated hologram:
 			//cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
-			//cudaDeviceSynchronize();
+			//cudaThreadSynchronize();
 			//p_uc2c_cc_shift<<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
 			////////////////////////////////////////////////////////////////////////////////////////////
 			//M_DISPLAY_DATA_CC(d_SLM_cc, 100);	
 			M_SAFE_CALL(cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice));
 			M_SAFE_CALL(cudaMemset(d_FFTd_cc, 0, memsize_SLMcc));	
 			M_CHECK_ERROR();
-			cudaDeviceSynchronize();		
+			cudaThreadSynchronize();		
 			for (int l=0; l<N_iterations; l++)
 			{
 				//////////////////////////////////////////////////////////
 				// Transform to trapping plane
 				//////////////////////////////////////////////////////////
 				M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_SLM_cc, d_FFTo_cc, CUFFT_FORWARD));
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 				//////////////////////////////////////////////////////////
 				// Copy phases for spot indices in d_FFTo_cc to d_FFTd_cc
 				//////////////////////////////////////////////////////////
@@ -327,12 +347,12 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 				else
 					ReplaceAmpsSpots_FFT <<< 1, N_spots >>> (d_FFTo_cc, d_FFTd_cc, l, d_Iobtained, d_weights, (l==(N_iterations-1)));
 				M_CHECK_ERROR();	
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 				//////////////////////////////////////////////////////////
 				//Transform back to SLM plane
 				//////////////////////////////////////////////////////////
 				M_CUFFT_SAFE_CALL(cufftExecC2C(plan, d_FFTd_cc, d_SLM_cc, CUFFT_INVERSE));
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 				//M_DISPLAY_DATA_CC(d_SLM_cc, 100);	
 
 				//////////////////////////////////////////////////////////
@@ -342,7 +362,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 				M_CHECK_ERROR();
 				//M_DISPLAY_DATA_CC(d_SLM_cc, 100);	
 
-				cudaDeviceSynchronize();
+				cudaThreadSynchronize();
 			}		
 			if (saveI_b)
 				M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
@@ -373,7 +393,7 @@ extern "C" __declspec(dllexport) int GenerateHologram(float *h_checkData, unsign
 ////////////////////////////////////////////////////////////////////////////////
 //Set correction parameters
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc)
+extern "C" int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc)
 {
 	UseAberrationCorr_b = (bool)UseAberrationCorr;
 	cudaMemcpyToSymbol(c_useAberrationCorr_b, &UseAberrationCorr_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
@@ -408,7 +428,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 		N_PolLUTCoeff = Ncoeff[PolOrder - 3];
 	else
 	{
-		AfxMessageBox("Polynomial order out of range\n -coerced to 3");
+    printf("Polynomial order out of range\n -coerced to 3\n");
 		N_PolLUTCoeff = Ncoeff[0];
 	}
 	cudaMemcpyToSymbol(c_N_PolLUTCoeff, &N_PolLUTCoeff, sizeof(int), 0, cudaMemcpyHostToDevice);
@@ -455,7 +475,7 @@ extern "C" __declspec(dllexport) int Corrections(int UseAberrationCorr, float *h
 ////////////////////////////////////////////////////////////////////////////////
 //Allocate GPU memory and start up SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
+extern "C" int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId)
 {
 	UseAberrationCorr_b = false;
 	UsePolLUT_b = false;
@@ -464,10 +484,10 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	//Make sure GPU with desired deviceId exists, set deviceId to 0 if not
 	int deviceCount=0;
 	if (cudaGetDeviceCount(&deviceCount)!=0)
-		AfxMessageBox("No CUDA compatible GPU found");
+		printf("No CUDA compatible GPU found\n");
 	if (deviceId>=deviceCount)
 	{
-		AfxMessageBox("Invalid deviceId, GPU with deviceId 0 used");
+		printf("Invalid deviceId, GPU with deviceId 0 used\n");
 		deviceId=0;
 	}
 	M_SAFE_CALL(cudaSetDevice(deviceId));
@@ -531,10 +551,10 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 	M_SAFE_CALL(cudaMalloc((void**)&d_FFTd_cc, memsize_SLMcc));	
 	M_SAFE_CALL(cudaMalloc((void**)&d_FFTo_cc, memsize_SLMcc));
 	M_SAFE_CALL(cudaMalloc((void**)&d_SLM_cc, memsize_SLMcc));
-	M_SAFE_CALL(cudaDeviceSynchronize());
+	M_SAFE_CALL(cudaThreadSynchronize());
 	p2c <<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_f, N_pixels);
 	M_CHECK_ERROR();
-	cudaDeviceSynchronize();
+	cudaThreadSynchronize();
 	M_CUFFT_SAFE_CALL(cufftPlan2d(&plan, data_w, data_w, CUFFT_C2C));
 	
 	float *h_aLaserFFT = (float *)malloc(memsize_SLM_f);
@@ -561,7 +581,7 @@ extern "C" __declspec(dllexport) int startCUDAandSLM(int EnableSLM, float *h_pSL
 ////////////////////////////////////////////////////////////////////////////////
 //Free GPU memory and shut down SLM
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int stopCUDAandSLM()
+extern "C" int stopCUDAandSLM()
 {
 	M_SAFE_CALL(cudaFree(d_x));
 	M_SAFE_CALL(cudaFree(d_y));
@@ -597,7 +617,7 @@ extern "C" __declspec(dllexport) int stopCUDAandSLM()
 		d_LUTPolCoeff_f = NULL;
 	}
 
-	cudaDeviceReset();
+	cudaThreadExit();
 	
 	//close out communication with the PCIe hardware SLMstuff
 	if(EnableSLM_b)
@@ -1754,18 +1774,18 @@ inline void mSafeCall(cudaError_t status, int line, char *file)
 			char CUDAmessage[200] = "CUDA says: ";
 			strcat(CUDAmessage,	cudaGetErrorString(status));
 			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
-			AfxMessageBox(CUDAmessage);
+			printf("%s", CUDAmessage);
 			if (status != CUFFT_SUCCESS)
 			exit(-1);
 		}
-		cudaDeviceSynchronize();
+		cudaThreadSynchronize();
 		status = cudaGetLastError();
 		if(status!=cudaSuccess)
 		{
 			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
 			strcat(CUDAmessage,	cudaGetErrorString(status));
 			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
-			AfxMessageBox(CUDAmessage);
+			printf("%s", CUDAmessage);
 			exit(-1);
 		}
 	}while(0);
@@ -1792,17 +1812,17 @@ inline void mCufftSafeCall(cufftResult_t status, int line, char *file)
 
 		}
 		sprintf(CUDAmessage,	"%son line: %d\nin file: %s", CUDAmessage, line, file);
-		AfxMessageBox(CUDAmessage);
+		printf("%s", CUDAmessage);
 		exit(-1);
 	}
-	cudaDeviceSynchronize();
+	cudaThreadSynchronize();
 	cudaError_t status2 = cudaGetLastError();
 	if(status2!=cudaSuccess)
 	{
 			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
 			strcat(CUDAmessage,	cudaGetErrorString(status2));
 			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
-			AfxMessageBox(CUDAmessage);
+			printf("%s", CUDAmessage);
 			exit(-1);
 	}
 #endif
@@ -1819,17 +1839,17 @@ inline void mCheckError(int line, char *file)
 			char CUDAmessage[200] = "CUDA says: ";
 			strcat(CUDAmessage,	cudaGetErrorString(status));
 			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
-			AfxMessageBox(CUDAmessage);
+			printf("%s", CUDAmessage);
 			exit(-1);
 		}
-		cudaDeviceSynchronize();
+		cudaThreadSynchronize();
 		status = cudaGetLastError();
 		if(status!=cudaSuccess)
 		{
 			char CUDAmessage[200] = "CUDA failed after sychronization:\n";
 			strcat(CUDAmessage,	cudaGetErrorString(status));
 			sprintf(CUDAmessage,	"%s\non line: %d\n", CUDAmessage, line);
-			AfxMessageBox(CUDAmessage);
+			printf("%s", CUDAmessage);
 			exit(-1);
 		}
 	}while(0);
@@ -1854,7 +1874,7 @@ inline void mDisplayDataF(float *d_data, int length, int line)
 		{
 			sprintf(MessageString,	"%s %f", MessageString, h_data[ii]);
 		}
-		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		printf("%s", MessageString);
 		free(h_data);
 	}while(0);
 #endif
@@ -1876,7 +1896,7 @@ inline void mDisplayDataCC(cufftComplex *d_data, int length, int line)
 		{
 			sprintf(MessageString,	"%s re: %f im: %f", MessageString, h_data[ii].x, h_data[ii].y);
 		}
-		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		printf("%s", MessageString);
 		free(h_data);
 	}while(0);
 #endif
@@ -1898,7 +1918,7 @@ inline void mDisplayDataUC(unsigned char *d_data, int length, int line)
 		{
 			sprintf(MessageString,	"%s %hhu", MessageString, h_data[ii]);
 		}
-		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		printf("%s", MessageString);
 		free(h_data);
 	}while(0);
 #endif
@@ -1920,7 +1940,7 @@ inline void mDisplayDataI(int *d_data, int length, int line)
 		{
 			sprintf(MessageString,	"%s %d", MessageString, h_data[ii]);
 		}
-		AfxMessageBox(MessageString, MB_ICONINFORMATION);
+		printf("%s", MessageString);
 		free(h_data);
 	}while(0);
 #endif
@@ -1930,7 +1950,7 @@ inline void mDisplayDataI(int *d_data, int length, int line)
 ////////////////////////////////////////////////////////////////////////////////
 //Calculate amplitudes in positions given by x, y, and z from a given hologram
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" __declspec(dllexport) int GetIandPhase(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_I_obt, float *h_Phase_obt)
+extern "C" int GetIandPhase(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_I_obt, float *h_Phase_obt)
 {
 	float *d_Iobtained_all;
 	float *d_Pobtained_all;
@@ -1948,7 +1968,7 @@ extern "C" __declspec(dllexport) int GetIandPhase(float *x_spots, float *y_spots
 		cudaMemcpyToSymbol(c_z, z_spots+offset, N_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
 		calculateIandPhase<<< N_spots_this, 512>>>(d_pSLM_uc, d_Iobtained_all+offset, d_Pobtained_all+offset);
 		//calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained)
-		cudaDeviceSynchronize();
+		cudaThreadSynchronize();
 		
 		N_spots_rem -= MAX_SPOTS;
 		offset += MAX_SPOTS;
@@ -2103,3 +2123,10 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 			g_pSLM2pi[idx] = pSLM2pi_f;	//...or write intermediate pSpot to global memory
 	}
 }*/
+
+int main()
+{
+  printf("This is working\n");
+  return 0;
+}
+
