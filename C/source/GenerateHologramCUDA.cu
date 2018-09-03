@@ -40,12 +40,12 @@
 //Naming convention for variables: 
 //-The prefix indicates where data is located
 //--In host functions:		h = host memory
-//							d = device memory
-//							c = constant memory
+//				d = device memory
+//				c = constant memory
 //--In global functions:	g = global memory
-//							s = shared memory
-//							c = constant memory
-//							no prefix = registers
+//				s = shared memory
+//				c = constant memory
+//				no prefix = registers
 //-The suffix indicates the data type, no suffix usually indicates an iteger
 ////////////////////////////////////////////////////////////////////////////////
 //Possible improvements:
@@ -81,7 +81,7 @@ cudaEvent_t start, stop;
 #define BLOCK_SIZE 256	//should be a power of 2
 #define SLM_SIZE 512
 #if ((SLM_SIZE==16)||(SLM_SIZE==32)||(SLM_SIZE==64)||(SLM_SIZE==128)||(SLM_SIZE==256)||(SLM_SIZE==512)||(SLM_SIZE==1024)||(SLM_SIZE==2048))
-#define SLMPOW2			//Uses bitwize modulu operations if teh SLM size is a power of 2
+#define SLMPOW2			//Uses bitwise modulu operations if the SLM size is a power of 2
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1618,7 +1618,7 @@ __global__ void ReplaceAmpsSpotsDC_FFT(cufftComplex *g_cSpotAmp_cc, cufftComplex
 			weight = g_weight[idx + iteration*c_N_spots[0]];
 		else
 		{
-			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara så här med DC?
+			aSpot = (aSpot<0.5f) ? 0.5f : aSpot; //ska det vara sÃ¥ hÃ¤r med DC?
 			weight = c_desiredAmp[idx]/(c_N_pixels_f[0]);	
 		}
 		weight = weight / aSpot;   
