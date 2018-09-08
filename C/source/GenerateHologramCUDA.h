@@ -1,19 +1,19 @@
-/*   
+/*
    Header file for GenerateHologramCUDA
    Hologram generating algorithms for CUDA Devices
-   
-   Copyright 2009, 2010, 2011, 2012 Martin Persson 
+
+   Copyright 2009, 2010, 2011, 2012 Martin Persson
    martin.persson@physics.gu.se
 
 
    This file is part of GenerateHologramCUDA.
 
-    GenerateHologramCUDA is free software: you can redistribute it and/or 
-    modify it under the terms of the GNU Lesser General Public License as published 
+    GenerateHologramCUDA is free software: you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public License as published
     by the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    GenerateHologramCUDA is distributed in the hope that it will be 
+    GenerateHologramCUDA is distributed in the hope that it will be
     useful, but WITHOUT ANY WARRANTY; without even the implied warranty
     of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
@@ -25,7 +25,7 @@
 #define GENERATEHOLOGRAMCUDA_H
 
 ////////////////////////////////////////////////////////////////////////////////
-//Generate a hologram 
+//Generate a hologram
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
 
