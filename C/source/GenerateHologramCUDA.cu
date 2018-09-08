@@ -61,7 +61,7 @@
 //-Allow variable spot phases for Lenses and Prisms
 ////////////////////////////////////////////////////////////////////////////////
 
-//#define M_CUDA_DEBUG			   //activates a number of custom debug macros//
+#define M_CUDA_DEBUG         //activates a number of custom debug macros//
 float dt_milliseconds;
 cudaEvent_t start, stop;
 
@@ -73,6 +73,7 @@ cudaEvent_t start, stop;
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 #include <cufft.h>
 
 #ifndef M_PI
@@ -221,8 +222,18 @@ extern "C" void ShutDownSLM()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//Public dll functions 
+// Timing
 ////////////////////////////////////////////////////////////////////////////////
+
+double get_clock() {
+  struct timeval tv;
+  int ok;
+  ok = gettimeofday(&tv, NULL);
+  if (ok < 0) {
+    printf("gettimeofday error");
+  }
+  return (tv.tv_sec * 1.0 + tv.tv_usec * 1.0E-6);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //Generate a hologram
@@ -246,9 +257,13 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
 
   switch (method) {
     case 0:
+      printf("Starting Lenses and Prisms...\n");
       //////////////////////////////////////////////////
       //Generate the hologram using "Lenses and Prisms"
       //////////////////////////////////////////////////
+
+      t = get_clock();
+
       LensesAndPrisms<<< n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
       M_CHECK_ERROR();
       cudaThreadSynchronize();
@@ -261,8 +276,12 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
         M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_Iobtained, N_spots*sizeof(float), cudaMemcpyDeviceToHost));
       }
       M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+
+      t = get_clock() - t;
+      printf("Total time = %12.8lf seconds\n", t);
       break;
     case 1:
+      printf("Starting Fresnel...\n");
       ////////////////////////////////////////////////////////////////////////////
       //Genreate holgram using fresnel propagation
       ////////////////////////////////////////////////////////////////////////////
@@ -276,8 +295,11 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
       cudaEventRecord(start, 0);
       cudaEventSynchronize(start);*/
 
+      t = get_clock();
+
       for (int l=0; l<N_iterations; l++)
       {
+        printf("Iteration %d\n", l);
         ////////////////////////////////////////////////////
         //Propagate to the spot positions
         ////////////////////////////////////////////////////
@@ -321,8 +343,13 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
       else
         M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
       M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+
+      t = get_clock() - t;
+      printf("Total time = %12.8lf seconds\n", t);
+      printf("Time/iteration = %12.8lf seconds\n", t/((double) N_iterations));
       break;
     case 2:
+      printf("Starting FFT...\n");
       ////////////////////////////////////////////////////////////////////////////////////////////
       //generate hologram using fast fourier transforms
       ////////////////////////////////////////////////////////////////////////////////////////////
@@ -332,12 +359,16 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
       //p_uc2c_cc_shift<<< n_blocks_Phi, BLOCK_SIZE >>>(d_SLM_cc, d_pSLM_uc, N_pixels, data_w);
       ////////////////////////////////////////////////////////////////////////////////////////////
       //M_DISPLAY_DATA_CC(d_SLM_cc, 100);
+
+      t = get_clock();
+
       M_SAFE_CALL(cudaMemcpy(d_desiredAmp, h_desiredAmp, memsize_spotsf, cudaMemcpyHostToDevice));
       M_SAFE_CALL(cudaMemset(d_FFTd_cc, 0, memsize_SLMcc));
       M_CHECK_ERROR();
       cudaThreadSynchronize();
       for (int l=0; l<N_iterations; l++)
       {
+        printf("Iteration %d\n", l);
         //////////////////////////////////////////////////////////
         // Transform to trapping plane
         //////////////////////////////////////////////////////////
@@ -373,6 +404,10 @@ extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, fl
       else
         M_SAFE_CALL(cudaMemcpy(h_Iobtained, d_weights, N_spots*(N_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
       M_SAFE_CALL(cudaMemcpy(h_pSLM_uc, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+
+      t = get_clock() - t;
+      printf("Total time = %12.8lf seconds\n", t);
+      printf("Time/iteration = %12.8lf seconds\n", t/((double) N_iterations));
       break;
     case 100:
       ////////////////////////////////////////////////////////////////////////////////////////////
@@ -2130,7 +2165,56 @@ __global__ void PropagateToSLM_Fresnel(float *g_x,
 
 int main()
 {
-  printf("This is working\n");
+  const int numPixels = SLM_SIZE * SLM_SIZE; // 512^2
+  const int N = 4; // Four spots
+  const int method = 1; // 0 => Direct, 1 => Fresnel, 2 => FFT
+  const int iterations = 10; // 10 iterations for convergence
+
+  int enableSLM = 0; // Don't have one
+  int device = 0; // We only have one GPU
+  unsigned short trueFrames = 0; // Don't care
+  char *LUT = NULL; // Don't care
+  float *test = NULL; // Don't care
+
+  // These form a quadrant across four planes
+  float x[] = {-128.0, -128.0, 127.0, 127.0};
+  float y[] = {127.0, -128.0, 127.0, -128.0};
+  float z[] = {1.0, 2.0, 3.0, 4.0};
+  float I[] = {0.12, 0.34, 0.56, 0.78};
+
+  unsigned char *hologram = (unsigned char *) malloc(numPixels * sizeof(unsigned char));
+  float *slmStart = (float *) malloc(numPixels * sizeof(float)); // [-pi, pi]
+  for (int i = 0; i < numPixels; i++) {
+    hologram[i] = 0.0f;
+    slmStart[i] = (2.0 * M_PI * (random() / ((float) RAND_MAX))) - M_PI;
+  }
+
+  float *amps = (float *) malloc(N * iterations * sizeof(float));
+  for (int i = 0; i < N * iterations; i++) {
+    amps[i] = 0.0f;
+  }
+
+  double t = get_clock();
+
+  if (startCUDAandSLM(enableSLM, slmStart, LUT, trueFrames, device) != 0) {
+    printf("Init failed.\n");
+    exit(1);
+  }
+
+  if (GenerateHologram(test, hologram, x, y, z, I, N, iterations, amps, method) != 0) {
+    printf("Computation failed.\n");
+    exit(1);
+  }
+
+  t = get_clock() - t;
+
+  if (stopCUDAandSLM() != 0) {
+    printf("Cleanup failed.\n");
+    exit(1);
+  }
+
+  printf("Total time = %12.8lf seconds\n", t);
+
   return 0;
 }
 
