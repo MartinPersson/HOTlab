@@ -21,29 +21,38 @@
     You should have received a copy of the GNU Lesser General Public License
     along with GenerateHologramCUDA.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #ifndef GENERATEHOLOGRAMCUDA_H
 #define GENERATEHOLOGRAMCUDA_H
 
-////////////////////////////////////////////////////////////////////////////////
-//Generate a hologram
-////////////////////////////////////////////////////////////////////////////////
-extern "C" int GenerateHologram(float *h_checkData, unsigned char *h_pSLM_uc, float *x_spots, float *y_spots, float *z_spots, float *I_spots, int N_spots, int N_iterations, float *h_Iobtained, int method);
+// Allocate GPU memory and parameters
+int setup(float *init_phases);
 
-////////////////////////////////////////////////////////////////////////////////
-//Set correction parameters
-////////////////////////////////////////////////////////////////////////////////
-extern "C" int Corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int DCborderWidth, int UseLUT, unsigned char *h_LUT_uc);
+// Free GPU memory
+int finish();
 
-////////////////////////////////////////////////////////////////////////////////
-//Allocate GPU memory and start up SLM
-////////////////////////////////////////////////////////////////////////////////
-extern "C" int startCUDAandSLM(int EnableSLM, float *h_pSLMstart, char* LUTFile, unsigned short TrueFrames, int deviceId);
+// Set correction parameters
+int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int UseLUT, unsigned char *h_LUT_uc);
 
-////////////////////////////////////////////////////////////////////////////////
-//Free GPU memory and shut down SLM
-////////////////////////////////////////////////////////////////////////////////
-extern "C" int stopCUDAandSLM();
+// Generate a hologram
+int generate_hologram(unsigned char *hologram,
+                      float *x_spots,
+                      float *y_spots,
+                      float *z_spots,
+                      float *i_spots,
+                      int num_spots,
+                      const int num_iterations,
+                      float *intensity,
+                      int method);
 
-extern "C" int GetAmps(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_amps);
+// Computes amplitudes and phase in positions (x, y, z)
+int get_amp_and_phase(float *x_spots,
+                      float *y_spots,
+                      float *z_spots,
+                      float *h_pSLM_uc,
+                      int N_spots_all,
+                      int data_w,
+                      float *h_I_obt,
+                      float *h_Phase_obt);
 
 #endif
