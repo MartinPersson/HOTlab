@@ -54,14 +54,13 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
                       float *inter_amps,        // intermediate amplitudes (debug)
                       int method);              // method to use for generating hologram
 
-// Computes amplitudes and phase in positions (x, y, z)
-int get_amp_and_phase(float *x_spots,
-                      float *y_spots,
-                      float *z_spots,
-                      float *h_pSLM_uc,
-                      int N_spots_all,
-                      int data_w,
-                      float *h_I_obt,
-                      float *h_Phase_obt);
+// Calculate amplitude and phase at positions (x, y, z) from a given hologram
+int get_amp_and_phase(const float *x_spots,   // x coordinates of spots
+                      const float *y_spots,   // y coordinates of spots
+                      const float *z_spots,   // z coordinates of spots
+                      const int num_spots,    // number of spots
+                      const float *hologram,  // hologram to use
+                      float *amp,             // amplitude at (x, y, z)
+                      float *phase);          // phase at (x, y, z)
 
 #endif

@@ -83,7 +83,7 @@ float SLMsizef = (float) SLM_SIZE;
 int N_PolLUTCoeff = 0;
 int n_blocks_Phi, memsize_SLM_f, memsize_SLMuc, memsize_spotsf, data_w, N_pixels;
 float h_desiredAmp[MAX_SPOTS];
-unsigned char *d_pSLM_uc;           //The optimized pSpot pattern, unsigned char, the one sent to the SLM [0, 255]
+unsigned char *d_hologram;           //The optimized pSpot pattern, unsigned char, the one sent to the SLM [0, 255]
 unsigned char *d_LUT_uc = NULL;
 bool ApplyLUT_b = false, UseAberrationCorr_b = false, UsePolLUT_b = false, saveI_b = false, useRPC_b = false;
 float alphaRPC_f = 10;
@@ -155,18 +155,18 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
       printf("Starting Lenses and Prisms...\n");
       t = get_clock();
 
-      LensesAndPrisms<<<n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+      LensesAndPrisms<<<n_blocks_Phi, BLOCK_SIZE >>>(d_hologram, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
       M_CHECK_ERROR();
       cudaThreadSynchronize();
       M_CHECK_ERROR();
 
       if (saveI_b) {
-        calculateIobtained<<<num_spots, SLM_SIZE>>>(d_pSLM_uc, d_Iobtained);
+        calculateIobtained<<<num_spots, SLM_SIZE>>>(d_hologram, d_Iobtained);
         M_CHECK_ERROR();
         cudaThreadSynchronize();
         M_SAFE_CALL(cudaMemcpy(inter_amps, d_Iobtained, num_spots*sizeof(float), cudaMemcpyDeviceToHost));
       }
-      M_SAFE_CALL(cudaMemcpy(hologram, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+      M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, memsize_SLMuc, cudaMemcpyDeviceToHost));
 
       t = get_clock() - t;
       printf("Total time = %12.8lf seconds\n", t);
@@ -177,9 +177,9 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
       t = get_clock();
 
       // Uncomment this to start with pre-calculated hologram:
-      //cudaMemcpy(d_pSLM_uc, hologram, memsize_SLMuc, cudaMemcpyHostToDevice);
+      //cudaMemcpy(d_hologram, hologram, memsize_SLMuc, cudaMemcpyHostToDevice);
       //cudaThreadSynchronize();
-      //uc2f<<<n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_pSLM_uc, N_pixels);
+      //uc2f<<<n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_f, d_hologram, N_pixels);
 
       for (int l = 0; l < num_iterations; l++) {
         printf("Iteration %d\n", l);
@@ -190,7 +190,7 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
         cudaThreadSynchronize();
 
         // Propagate to the SLM plane
-        PropagateToSLM_Fresnel<<<n_blocks_Phi, BLOCK_SIZE >>>(d_spotRe_f, d_spotIm_f, d_pSLM_f, d_weights, l, d_pSLMstart_f, d_Iobtained, (l==(num_iterations-1)), d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+        PropagateToSLM_Fresnel<<<n_blocks_Phi, BLOCK_SIZE >>>(d_spotRe_f, d_spotIm_f, d_pSLM_f, d_weights, l, d_pSLMstart_f, d_Iobtained, (l==(num_iterations-1)), d_hologram, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
         M_CHECK_ERROR();
         cudaThreadSynchronize();
       }
@@ -199,7 +199,7 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
         M_SAFE_CALL(cudaMemcpy(inter_amps, d_Iobtained, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
       else
         M_SAFE_CALL(cudaMemcpy(inter_amps, d_weights, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
-      M_SAFE_CALL(cudaMemcpy(hologram, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+      M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, memsize_SLMuc, cudaMemcpyDeviceToHost));
 
       t = get_clock() - t;
       printf("Total time = %12.8lf seconds\n", t);
@@ -207,9 +207,9 @@ int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
       break;
     case 100:
       // Apply corrections to pre-calculated hologram
-      M_SAFE_CALL(cudaMemcpy(d_pSLM_uc, hologram, memsize_SLMuc, cudaMemcpyHostToDevice));
-      ApplyCorrections<<<n_blocks_Phi, BLOCK_SIZE >>>(d_pSLM_uc, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
-      M_SAFE_CALL(cudaMemcpy(hologram, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
+      M_SAFE_CALL(cudaMemcpy(d_hologram, hologram, memsize_SLMuc, cudaMemcpyHostToDevice));
+      ApplyCorrections<<<n_blocks_Phi, BLOCK_SIZE >>>(d_hologram, d_LUT_uc, d_AberrationCorr_f, d_LUTPolCoeff_f);
+      M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, memsize_SLMuc, cudaMemcpyDeviceToHost));
       break;
     default:
       break;
@@ -304,7 +304,7 @@ int set_correction_parameters(int use_aberration_correction,  // use wavefront d
 }
 
 // Allocate GPU memory and start up SLM
-int setup(float *h_init_phases)
+int setup(float *init_phases)
 {
   UseAberrationCorr_b = false;
   UsePolLUT_b = false;
@@ -362,10 +362,10 @@ int setup(float *h_init_phases)
   M_SAFE_CALL(cudaMemset(d_pSLM_f, 0, data_w_pow2*data_w_pow2*sizeof(float)));
 
   M_SAFE_CALL(cudaMalloc((void**)&d_pSLMstart_f, memsize_SLM_f));
-  M_SAFE_CALL(cudaMalloc((void**)&d_pSLM_uc, memsize_SLMuc));
+  M_SAFE_CALL(cudaMalloc((void**)&d_hologram, memsize_SLMuc));
   M_SAFE_CALL(cudaMemset(d_pSLMstart_f, 0, N_pixels*sizeof(float)));
 
-  M_SAFE_CALL(cudaMemcpy(d_pSLM_f, h_init_phases, N_pixels*sizeof(float), cudaMemcpyHostToDevice));
+  M_SAFE_CALL(cudaMemcpy(d_pSLM_f, init_phases, N_pixels*sizeof(float), cudaMemcpyHostToDevice));
 
   status = cudaGetLastError();
   return status;
@@ -383,7 +383,7 @@ int finish()
   M_SAFE_CALL(cudaFree(d_Iobtained));
   M_SAFE_CALL(cudaFree(d_pSLM_f));
   M_SAFE_CALL(cudaFree(d_pSLMstart_f));
-  M_SAFE_CALL(cudaFree(d_pSLM_uc));
+  M_SAFE_CALL(cudaFree(d_hologram));
 
   if (ApplyLUT_b) {
     cudaFree(d_LUT_uc);
@@ -1202,39 +1202,47 @@ inline void mDisplayDataI(int *d_data, int length, int line)
   return;
 }
 
-// Calculate amplitudes in positions given by x, y, and z from a given hologram
-int get_amp_and_phase(float *x_spots, float *y_spots, float *z_spots, float *h_pSLM_uc, int N_spots_all, int data_w, float *h_I_obt, float *h_Phase_obt)
+// Calculate amplitude and phase at positions (x, y, z) from a given hologram
+int get_amp_and_phase(const float *x_spots,   // x coordinates of spots
+                      const float *y_spots,   // y coordinates of spots
+                      const float *z_spots,   // z coordinates of spots
+                      const int num_spots,    // number of spots
+                      const float *hologram,  // hologram to use
+                      float *amp,             // amplitude at (x, y, z)
+                      float *phase)           // phase at (x, y, z)
 {
-  float *d_Iobtained_all;
-  float *d_Pobtained_all;
-  cudaMalloc((void**)&d_Iobtained_all, N_spots_all*sizeof(float) );
-  cudaMalloc((void**)&d_Pobtained_all, N_spots_all*sizeof(float) );
-  cudaMemcpy(d_pSLM_uc, h_pSLM_uc, memsize_SLMuc, cudaMemcpyHostToDevice);
+  float *d_amp;
+  float *d_phase;
+  cudaMalloc((void**)&d_amp, num_spots*sizeof(float));
+  cudaMalloc((void**)&d_phase, num_spots*sizeof(float));
+  cudaMemcpy(d_hologram, hologram, memsize_SLMuc, cudaMemcpyHostToDevice);
+
   int offset = 0;
-  int N_spots_rem = N_spots_all;
-  int N_spots_this;
-  while (N_spots_rem > 0)
-  {
-    N_spots_this = (N_spots_rem > MAX_SPOTS) ? MAX_SPOTS : N_spots_rem;
-    cudaMemcpyToSymbol(c_x, x_spots+offset, N_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(c_y, y_spots+offset, N_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(c_z, z_spots+offset, N_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
-    calculateIandPhase<<<N_spots_this, 512>>>(d_pSLM_uc, d_Iobtained_all+offset, d_Pobtained_all+offset);
+  int num_spots_rem = num_spots;
+  int num_spots_this;
+
+  while (num_spots_rem > 0) {
+    num_spots_this = (num_spots_rem > MAX_SPOTS) ? MAX_SPOTS : num_spots_rem;
+    cudaMemcpyToSymbol(c_x, x_spots+offset, num_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(c_y, y_spots+offset, num_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(c_z, z_spots+offset, num_spots_this*sizeof(float), 0, cudaMemcpyHostToDevice);
+    calculateIandPhase<<<num_spots_this, 512>>>(d_hologram, d_amp+offset, d_phase+offset);
     //calculateIobtained(unsigned char *g_pSLM_uc, float *g_Iobtained)
     cudaThreadSynchronize();
 
-    N_spots_rem -= MAX_SPOTS;
+    num_spots_rem -= MAX_SPOTS;
     offset += MAX_SPOTS;
   }
-  cudaMemcpy(h_I_obt, d_Iobtained_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_Phase_obt, d_Pobtained_all, N_spots_all*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaFree(d_Iobtained_all);
-  cudaFree(d_Pobtained_all);
+
+  cudaMemcpy(amp, d_amp, num_spots*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(phase, d_phase, num_spots*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(d_amp);
+  cudaFree(d_phase);
 
   status = cudaGetLastError();
-
   return status;
 }
+
 //compute amps for constant total int
 /*void computeAmps(float *h_I, float *h_desiredAmp, float *x, float *y, int N_spots, float e_desired)
 {
@@ -1410,7 +1418,7 @@ int main()
     exit(1);
   }
 
-  if (set_correction_parameters(0, NULL, 1, 5, polLUT, 0, NULL, 0, 0.0, 1) != 0) {
+  if (set_correction_parameters(0, NULL, 0, 5, polLUT, 0, NULL, 0, 0.0, 1) != 0) {
     printf("Correction setup failed.\n");
     exit(1);
   }
