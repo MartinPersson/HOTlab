@@ -56,7 +56,8 @@ __global__ void PropagateToSpotPositions_Fresnel(float *g_pSLM2pi, float *g_spot
 __global__ void XYtoIndex();
 __global__ void f2uc(unsigned char *uc, float *f, int N_pixels, unsigned char *g_LUT, int use_linLUT, int data_w);
 __global__ void uc2f(float *f, unsigned char *uc, int N);
-inline int computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method);
+
+int compute_and_copy_spot_data(const float *intensity, const float *x, const float *y, const float *z, const int n, int method);
 
 // Custom debug macros
 #define M_CHECK_ERROR() mCheckError(__LINE__, __FILE__)
@@ -83,7 +84,6 @@ int N_PolLUTCoeff = 0;
 int n_blocks_Phi, memsize_SLM_f, memsize_SLMuc, memsize_spotsf, data_w, N_pixels;
 float h_desiredAmp[MAX_SPOTS];
 unsigned char *d_pSLM_uc;           //The optimized pSpot pattern, unsigned char, the one sent to the SLM [0, 255]
-unsigned char *h_LUT_uc;
 unsigned char *d_LUT_uc = NULL;
 bool ApplyLUT_b = false, UseAberrationCorr_b = false, UsePolLUT_b = false, saveI_b = false, useRPC_b = false;
 float alphaRPC_f = 10;
@@ -125,15 +125,15 @@ double get_clock() {
 }
 
 // Generates a hologram
-int generate_hologram(unsigned char *hologram,
-                      float *x_spots,
-                      float *y_spots,
-                      float *z_spots,
-                      float *i_spots,
-                      int num_spots,
-                      const int num_iterations,
-                      float *intensity,
-                      int method)
+int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
+                      float *x_spots,           // x coordinates of spots/traps
+                      float *y_spots,           // y coordinates of spots/traps
+                      float *z_spots,           // z coordinates of spots/traps
+                      float *i_spots,           // relative intensities of spots/traps
+                      int num_spots,            // number of spots/traps
+                      const int num_iterations, // number of iterations to run GSW
+                      float *inter_amps,        // intermediate amplitudes (debug)
+                      int method)               // method to use for generating hologram
 {
   if (num_spots > MAX_SPOTS)
     num_spots = MAX_SPOTS;
@@ -145,7 +145,7 @@ int generate_hologram(unsigned char *hologram,
   memsize_spotsf = num_spots * sizeof(float);
 
   // Sets method to -1 if num_spots == 0.
-  method = computeAndCopySpotData(i_spots, x_spots, y_spots, z_spots, num_spots, method);
+  method = compute_and_copy_spot_data(i_spots, x_spots, y_spots, z_spots, num_spots, method);
 
   double t;
 
@@ -164,7 +164,7 @@ int generate_hologram(unsigned char *hologram,
         calculateIobtained<<<num_spots, SLM_SIZE>>>(d_pSLM_uc, d_Iobtained);
         M_CHECK_ERROR();
         cudaThreadSynchronize();
-        M_SAFE_CALL(cudaMemcpy(intensity, d_Iobtained, num_spots*sizeof(float), cudaMemcpyDeviceToHost));
+        M_SAFE_CALL(cudaMemcpy(inter_amps, d_Iobtained, num_spots*sizeof(float), cudaMemcpyDeviceToHost));
       }
       M_SAFE_CALL(cudaMemcpy(hologram, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 
@@ -196,9 +196,9 @@ int generate_hologram(unsigned char *hologram,
       }
 
       if (saveI_b)
-        M_SAFE_CALL(cudaMemcpy(intensity, d_Iobtained, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+        M_SAFE_CALL(cudaMemcpy(inter_amps, d_Iobtained, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
       else
-        M_SAFE_CALL(cudaMemcpy(intensity, d_weights, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
+        M_SAFE_CALL(cudaMemcpy(inter_amps, d_weights, num_spots*(num_iterations)*sizeof(float), cudaMemcpyDeviceToHost));
       M_SAFE_CALL(cudaMemcpy(hologram, d_pSLM_uc, memsize_SLMuc, cudaMemcpyDeviceToHost));
 
       t = get_clock() - t;
@@ -221,22 +221,31 @@ int generate_hologram(unsigned char *hologram,
 }
 
 // Set correction parameters
-int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int UseLUT, unsigned char *h_LUT_uc)
+int set_correction_parameters(int use_aberration_correction,  // use wavefront distortion correction
+                              float *aberration_coefficients, // correction matrix
+                              int use_svpr,                   // use spatially varying phase response
+                              int pol_order,                  // polynomial order for phase correction
+                              float *pol_coeffs,              // polynomial coefficients
+                              int use_lut,                    // use LUT for phase/integer conversion (mutually exclusive with svpr)
+                              unsigned char *lut,             // LUT for phase/integer conversion
+                              int use_rpc,                    // use restricted phase change
+                              float alpha,                    // if < 1.0, restricted phase change threshold = 2*pi*alpha
+                              int save_amplitudes)            // save amplitudes in host array
 {
-  UseAberrationCorr_b = (bool) UseAberrationCorr;
+  UseAberrationCorr_b = (bool) use_aberration_correction;
   cudaMemcpyToSymbol(c_useAberrationCorr_b, &UseAberrationCorr_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
-  UsePolLUT_b = (bool) UseLUTPol;
+  UsePolLUT_b = (bool) use_svpr;
   cudaMemcpyToSymbol(c_usePolLUT_b, &UsePolLUT_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
-  saveI_b = (bool) saveAmplitudes;
+  saveI_b = (bool) save_amplitudes;
   cudaMemcpyToSymbol(c_saveI_b, &saveI_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
-  ApplyLUT_b = (bool) UseLUT;
+  ApplyLUT_b = (bool) use_lut;
   cudaMemcpyToSymbol(c_applyLUT_b, &ApplyLUT_b, sizeof(bool), 0, cudaMemcpyHostToDevice);
 
   alphaRPC_f = alpha*2.0f*M_PI;
-  if (alpha < 1.0f)
+  if (use_rpc && alpha < 1.0f)
     useRPC_b = true;
   else
     useRPC_b = false;
@@ -245,8 +254,8 @@ int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, i
 
   int Ncoeff[5] = {20, 35, 56, 84, 120};
 
-  if ((3 <= PolOrder) && (PolOrder <= 7)) {
-    N_PolLUTCoeff = Ncoeff[PolOrder - 3];
+  if ((3 <= pol_order) && (pol_order <= 7)) {
+    N_PolLUTCoeff = Ncoeff[pol_order - 3];
     printf("%d\n", N_PolLUTCoeff);
   } else {
     printf("Polynomial order out of range\n -coerced to 3\n");
@@ -258,7 +267,7 @@ int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, i
   {
     if (d_AberrationCorr_f == NULL)   //Allocate memory only if not already allocated
       cudaMalloc((void**)&d_AberrationCorr_f, memsize_SLM_f);
-    UseAberrationCorr_b = !cudaMemcpy(d_AberrationCorr_f, h_AberrationCorr, memsize_SLM_f, cudaMemcpyHostToDevice);
+    UseAberrationCorr_b = !cudaMemcpy(d_AberrationCorr_f, aberration_coefficients, memsize_SLM_f, cudaMemcpyHostToDevice);
   }
   else if (d_AberrationCorr_f != NULL)  //If memory is allocated: free memory and reset pointer to NULL
   {
@@ -269,7 +278,7 @@ int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, i
   {
     if (d_LUTPolCoeff_f == NULL)          //Allocate memory only if not already allocated
       cudaMalloc((void**)&d_LUTPolCoeff_f, 120*sizeof(float));
-    UsePolLUT_b = !cudaMemcpy(d_LUTPolCoeff_f, h_LUTPolCoeff, N_PolLUTCoeff*sizeof(float), cudaMemcpyHostToDevice);
+    UsePolLUT_b = !cudaMemcpy(d_LUTPolCoeff_f, pol_coeffs, N_PolLUTCoeff*sizeof(float), cudaMemcpyHostToDevice);
   }
   else if (d_LUTPolCoeff_f!=NULL) //If memory is allocated: free memory and reset pointer to NULL
   {
@@ -281,7 +290,7 @@ int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, i
   {
     if (d_LUT_uc == NULL)         //Allocate memory only if not already allocated
       cudaMalloc((void**)&d_LUT_uc, 256*sizeof(unsigned char));
-    UseLUT = !cudaMemcpy(d_LUT_uc, h_LUT_uc, 256*sizeof(unsigned char), cudaMemcpyHostToDevice);
+    use_lut = !cudaMemcpy(d_LUT_uc, lut, 256*sizeof(unsigned char), cudaMemcpyHostToDevice);
   }
   else if (d_LUT_uc!=NULL)  //If memory is allocated: free memory and reset pointer to NULL
   {
@@ -600,23 +609,23 @@ __device__ void warpReduceC(volatile float *s_Vre, volatile float *s_Vim, int ti
   s_Vim[tid] += s_Vim[tid + 1];
 }
 
-inline int computeAndCopySpotData(float *h_I, float *x, float *y, float *z, int N_spots, int method)
+int compute_and_copy_spot_data(const float *intensity, const float *x, const float *y, const float *z, const int n, int method)
 {
   //float Isum = 0.0f;
-  //for (int i = 0; i<N_spots; i++)
-  //  Isum += h_I[i];
-  for (int j = 0; j < N_spots; j++) {
+  //for (int i = 0; i<n; i++)
+  //  Isum += intensity[i];
+  for (int j = 0; j < n; j++) {
     float sincx_rec = (x[j] == 0) ? 1.0f : ((M_PI * x[j]/SLMsizef)/sinf(M_PI * x[j]/SLMsizef));
     float sincy_rec = (y[j] == 0) ? 1.0f : ((M_PI * y[j]/SLMsizef)/sinf(M_PI * y[j]/SLMsizef));
-    h_desiredAmp[j] = (h_I[j] <= 0.0f) ? 1.0f : (sincx_rec * sincy_rec * sqrtf(h_I[j]/100) * SLMsizef * SLMsizef);
+    h_desiredAmp[j] = (intensity[j] <= 0.0f) ? 1.0f : (sincx_rec * sincy_rec * sqrtf(intensity[j]/100) * SLMsizef * SLMsizef);
   }
-  cudaMemcpyToSymbol(c_x, x, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(c_y, y, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(c_z, z, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(c_desiredAmp, h_desiredAmp, N_spots*sizeof(float), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(c_N_spots, &N_spots, sizeof(int), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(c_x, x, n*sizeof(float), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(c_y, y, n*sizeof(float), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(c_z, z, n*sizeof(float), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(c_desiredAmp, h_desiredAmp, n*sizeof(float), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(c_N_spots, &n, sizeof(int), 0, cudaMemcpyHostToDevice);
 
-  if (N_spots == 0)
+  if (n == 0)
     method = -1;
 
   return method;
@@ -1401,7 +1410,7 @@ int main()
     exit(1);
   }
 
-  if (corrections(0, NULL, 1, 7, polLUT, 1, 1, 0, NULL) != 0) {
+  if (set_correction_parameters(0, NULL, 1, 5, polLUT, 0, NULL, 0, 0.0, 1) != 0) {
     printf("Correction setup failed.\n");
     exit(1);
   }

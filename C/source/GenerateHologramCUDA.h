@@ -25,25 +25,34 @@
 #ifndef GENERATEHOLOGRAMCUDA_H
 #define GENERATEHOLOGRAMCUDA_H
 
-// Allocate GPU memory and parameters
+// Allocate GPU memory and parameters. init_phases contains the initial phase values in the SLM plane.
 int setup(float *init_phases);
 
 // Free GPU memory
 int finish();
 
 // Set correction parameters
-int corrections(int UseAberrationCorr, float *h_AberrationCorr, int UseLUTPol, int PolOrder, float *h_LUTPolCoeff, int saveAmplitudes, float alpha, int UseLUT, unsigned char *h_LUT_uc);
+int set_correction_parameters(int use_aberration_correction,  // use wavefront distortion correction
+                              float *aberration_coefficients, // correction matrix
+                              int use_svpr,                   // use spatially varying phase response
+                              int pol_order,                  // polynomial order for phase correction
+                              float *pol_coeffs,              // polynomial coefficients
+                              int use_lut,                    // use LUT for phase/integer conversion (mutually exclusive with svpr)
+                              unsigned char *lut,             // LUT for phase/integer conversion
+                              int use_rpc,                    // use restricted phase change
+                              float alpha,                    // if < 1.0, restricted phase change threshold = 2*pi*alpha
+                              int save_amplitudes);           // save amplitudes in host array
 
 // Generate a hologram
-int generate_hologram(unsigned char *hologram,
-                      float *x_spots,
-                      float *y_spots,
-                      float *z_spots,
-                      float *i_spots,
-                      int num_spots,
-                      const int num_iterations,
-                      float *intensity,
-                      int method);
+int generate_hologram(unsigned char *hologram,  // hologram to send to SLM
+                      float *x_spots,           // x coordinates of spots/traps
+                      float *y_spots,           // y coordinates of spots/traps
+                      float *z_spots,           // z coordinates of spots/traps
+                      float *i_spots,           // relative intensities of spots/traps
+                      int num_spots,            // number of spots/traps
+                      const int num_iterations, // number of iterations to run GSW
+                      float *inter_amps,        // intermediate amplitudes (debug)
+                      int method);              // method to use for generating hologram
 
 // Computes amplitudes and phase in positions (x, y, z)
 int get_amp_and_phase(float *x_spots,
