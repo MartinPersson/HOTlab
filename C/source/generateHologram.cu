@@ -733,8 +733,8 @@ __global__ void propagateToSLM(// Hologram information
       float re = spotRe[tid];
       float im = spotIm[tid];
       spotP[tid] = atan2f(im, re);
+      spotA[tid] = hypotf(re, im)/spotDesiredAmp[tid];
       if (iteration != 0) {
-        spotA[tid] = hypotf(re, im)/spotDesiredAmp[tid];
         spotW[tid] = spotWeight[tid + iteration*numSpots];
       } else {
         spotA[tid] = (spotA[tid] < 0.5f) ? 0.5f : spotA[tid];
@@ -1305,6 +1305,7 @@ void computeAndCopySpotData(const float * const x,
     float sincxRec = (x[i] == 0) ? 1.0f : ((M_PI * x[i]/slmDimf) / sinf(M_PI * x[i]/slmDimf));
     float sincyRec = (y[i] == 0) ? 1.0f : ((M_PI * y[i]/slmDimf) / sinf(M_PI * y[i]/slmDimf));
     desiredAmp[i] = (intensity[i] <= 0.0f) ? 1.0f : (sincxRec * sincyRec * sqrtf(intensity[i]/100) * slmDimf * slmDimf);
+    printf("%f\n", desiredAmp[i]);
   }
 
   cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
@@ -1314,10 +1315,10 @@ void computeAndCopySpotData(const float * const x,
   free(desiredAmp);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
   srand(1);
-  const int method = 100; // 0 => Direct, 1 => Fresnel, 100 => Corrections
+  const int method = atoi(argv[1]); // 0 => Direct, 1 => Fresnel, 100 => Corrections
 
   slmDim = SLM_SIZE;
   slmPitch = 1.0f / ((float) slmDim);
@@ -1340,7 +1341,7 @@ int main()
   polOrder = 5;
   float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
   for (int i = 0; i < MAX_POL; i++) {
-    polCoeffs[i] = random() / ((float) RAND_MAX);
+    polCoeffs[i] = 0.0f;
   }
 
   useLUT = false;
@@ -1353,12 +1354,19 @@ int main()
   float *amps = (float *) malloc(numSpots * numIterations * sizeof(float));
   float * const initPhases = (float *) malloc(numPixels * sizeof(float)); // [-pi, pi]
   for (int i = 0; i < numPixels; i++) {
+    hologram[i] = random() % 256;
     initPhases[i] = (2.0 * M_PI * (random() / ((float) RAND_MAX))) - M_PI;
   }
 
   if (setup(initPhases, aberrationCoeffs, polCoeffs, lut) != 0) {
     printf("Init failed.\n");
     exit(1);
+  }
+
+  // Save initial hologram
+  FILE *ifile = fopen("my_init_hologram.dat", "w");
+  for (int i = 0; i < numPixels; i++) {
+    fprintf(ifile, "%hhu\n", hologram[i]);
   }
 
   double t = getClock();
@@ -1378,17 +1386,18 @@ int main()
   printf("Total time = %12.8lf seconds\n", t);
 
   // Save hologram
-  FILE *hfile = fopen("orig_hologram.dat", "w");
+  FILE *hfile = fopen("my_output_hologram.dat", "w");
   for (int i = 0; i < numPixels; i++) {
     fprintf(hfile, "%hhu\n", hologram[i]);
   }
 
   // Save amplitudes
-  FILE *afile = fopen("orig_amps.dat", "w");
+  FILE *afile = fopen("my_amps.dat", "w");
   for (int i = 0; i < numSpots * numIterations; i++) {
     fprintf(afile, "%f\n", amps[i]);
   }
 
+  fclose(ifile);
   fclose(hfile);
   fclose(afile);
 
