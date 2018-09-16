@@ -166,7 +166,7 @@ __device__ inline int getYIdx(const int index, const int xIdx, const int slmDim,
 // Get pixel coordinates in [-0.5, 0.5]
 __device__ inline float getPixelCoords(const int index, const int slmDim, const float slmPitch)
 {
-  return (((float) (index - (slmDim << 1))) * slmPitch);
+  return (slmPitch * ((float) (index - (slmDim >> 1))));
 }
 
 // Compute phase from pixel position and spot position
@@ -426,7 +426,7 @@ __global__ void lensesAndPrisms(// Hologram information
       spotx[tid] = spotX[tid];
       spoty[tid] = spotY[tid];
       spotz[tid] = spotZ[tid];
-    };
+    }
     __syncthreads();
 
     float pixelPhase;
