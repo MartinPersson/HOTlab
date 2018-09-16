@@ -153,7 +153,7 @@ __device__ inline int getXIdx(const int index, const int slmDim)
 }
 
 // Get y coordinate from global thread ID and x coordinate
-__device__ inline int getYIdx(const int index, const int xIdx, const int slmDim, const float slmPitch)
+__device__ inline int getYIdx(const int index, const int xIdx, const float slmPitch)
 {
 #ifdef SLMPOW2
   int idx = (index - xIdx) >> 9; // FIXME
@@ -371,7 +371,7 @@ __global__ void applyCorrections(// Hologram information
 
   if (useSVPR) {
     int xIdx = getXIdx(idx, slmDim);
-    int yIdx = getYIdx(idx, xIdx, slmDim, slmPitch);
+    int yIdx = getYIdx(idx, xIdx, slmPitch);
     float x = getPixelCoords(xIdx, slmDim, slmPitch);
     float y = getPixelCoords(yIdx, slmDim, slmPitch);
 
@@ -434,7 +434,7 @@ __global__ void lensesAndPrisms(// Hologram information
     float vIm = 0.0f;
 
     int xIdx = getXIdx(idx, slmDim);
-    int yIdx = getYIdx(idx, xIdx, slmDim, slmPitch);
+    int yIdx = getYIdx(idx, xIdx, slmPitch);
     float x = getPixelCoords(xIdx, slmDim, slmPitch);
     float y = getPixelCoords(yIdx, slmDim, slmPitch);
 
@@ -769,7 +769,7 @@ __global__ void propagateToSLM(// Hologram information
     __syncthreads();
 
     int xIdx = getXIdx(idx, slmDim);
-    int yIdx = getYIdx(idx, xIdx, slmDim, slmPitch);
+    int yIdx = getYIdx(idx, xIdx, slmPitch);
     float x = getPixelCoords(xIdx, slmDim, slmPitch);
     float y = getPixelCoords(yIdx, slmDim, slmPitch);
 
