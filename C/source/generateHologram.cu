@@ -1149,7 +1149,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
       t = getClock();
       numBlocks = (numPixels/BLOCK_SIZE + (numPixels % BLOCK_SIZE ? 1 : 0));
 
-      // Uncomment this to start with pre-calculated hologram:
+      // Uncomment this to start with pre-calculated hologram
       //cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
       //cudaThreadSynchronize();
       //uc2f<<<numBlocks, BLOCK_SIZE >>>(d_hologramPhase, d_hologram, numPixels);
@@ -1305,7 +1305,6 @@ void computeAndCopySpotData(const float * const x,
     float sincxRec = (x[i] == 0) ? 1.0f : ((M_PI * x[i]/slmDimf) / sinf(M_PI * x[i]/slmDimf));
     float sincyRec = (y[i] == 0) ? 1.0f : ((M_PI * y[i]/slmDimf) / sinf(M_PI * y[i]/slmDimf));
     desiredAmp[i] = (intensity[i] <= 0.0f) ? 1.0f : (sincxRec * sincyRec * sqrtf(intensity[i]/100) * slmDimf * slmDimf);
-    printf("%f\n", desiredAmp[i]);
   }
 
   cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
