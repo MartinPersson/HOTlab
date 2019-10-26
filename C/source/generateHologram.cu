@@ -61,8 +61,8 @@ void computeAndCopySpotData(const float * const x,
 #define M_DISPLAY_DATA_F(data, length) mDisplayDataF(data, length, __LINE__)
 #define M_DISPLAY_DATA_UC(data, length) mDisplayDataUC(data, length, __LINE__)
 #define M_DISPLAY_DATA_I(data, length) mDisplayDataI(data, length, __LINE__)
-inline void mSafeCall(cudaError_t status, int line, char *file);
-inline void mCheckError(int line, char *file);
+inline void mSafeCall(cudaError_t status, int line, const char *file);
+inline void mCheckError(int line, const char *file);
 inline void mDisplayDataF(float *d_data, int length, int line);
 inline void mDisplayDataUC(unsigned char *d_data, int length, int line);
 inline void mDisplayDataI(int *d_data, int length, int line);
@@ -829,7 +829,7 @@ __global__ void uc2f(float *f, const unsigned char * const uc, int N)
 }
 
 // Custom debug functions
-inline void mSafeCall(cudaError_t status, int line, char *file)
+inline void mSafeCall(cudaError_t status, int line, const char *file)
 {
 #ifdef M_CUDA_DEBUG
   do {
@@ -840,7 +840,7 @@ inline void mSafeCall(cudaError_t status, int line, char *file)
       printf("%s", CUDAmessage);
       exit(-1);
     }
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
     status = cudaGetLastError();
     if(status!=cudaSuccess) {
       char CUDAmessage[200] = "CUDA failed after sychronization:\n";
@@ -854,7 +854,7 @@ inline void mSafeCall(cudaError_t status, int line, char *file)
   return;
 }
 
-inline void mCheckError(int line, char *file)
+inline void mCheckError(int line, const char *file)
 {
 #ifdef M_CUDA_DEBUG
   do
@@ -868,7 +868,7 @@ inline void mCheckError(int line, char *file)
       printf("%s", CUDAmessage);
       exit(-1);
     }
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
     status = cudaGetLastError();
     if(status!=cudaSuccess)
     {
@@ -1073,7 +1073,7 @@ int finish()
     M_SAFE_CALL(cudaFree(d_lut));
   }
 
-  cudaThreadExit();
+  cudaDeviceReset();
   status = cudaGetLastError();
   return status;
 }
@@ -1122,7 +1122,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                                                  useLUT,
                                                  d_lut);
       M_CHECK_ERROR();
-      cudaThreadSynchronize();
+      cudaDeviceSynchronize();
       M_CHECK_ERROR();
 
       if (saveSpotI) {
@@ -1135,7 +1135,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                                            d_z,
                                            d_obtainedI);
         M_CHECK_ERROR();
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
         M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, numSpots*sizeof(float), cudaMemcpyDeviceToHost));
       }
       M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
@@ -1151,7 +1151,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
 
       // Uncomment this to start with pre-calculated hologram
       //cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
-      //cudaThreadSynchronize();
+      //cudaDeviceSynchronize();
       //uc2f<<<numBlocks, BLOCK_SIZE >>>(d_hologramPhase, d_hologram, numPixels);
 
       for (int l = 0; l < numIterations; l++) {
@@ -1166,7 +1166,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                                                          d_spotRe,
                                                          d_spotIm);
         M_CHECK_ERROR();
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
 
         propagateToSLM<<<numBlocks, BLOCK_SIZE>>>(d_hologram,
                                                   d_hologramPhase,
@@ -1196,7 +1196,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                                                   useRPC,
                                                   alpha);
         M_CHECK_ERROR();
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
       }
 
       if (saveSpotI)
@@ -1224,7 +1224,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                                                   useLUT,
                                                   d_lut);
       M_CHECK_ERROR();
-      cudaThreadSynchronize();
+      cudaDeviceSynchronize();
       M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
       break;
     default:
@@ -1269,7 +1269,7 @@ int getAmpAndPhase(const float * spotX,                  // x coordinates of spo
                                                    d_z,
                                                    d_amp + offset,
                                                    d_phase + offset);
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
 
     numSpotsRem -= MAX_SPOTS;
     offset += numSpotsThis;
