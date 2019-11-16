@@ -25,12 +25,7 @@
 //#define M_CORE_DEBUG
 
 // Includes
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <sys/time.h>
-#include <argp.h>
+#include "hologram.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
@@ -44,18 +39,18 @@
 #define BLOCK_STRIDE 8
 
 // FIXME: This shouldn't be hardcoded
-#define SLM_SIZE 256 // deprecate
 #define SLM_HEIGHT 256
 #define SLM_WIDTH 256
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
 #define NUM_SPOTS 4
-// Forward declaration
+
 void computeAndCopySpotData(const float * const x,
                             const float * const y,
                             const float * const z,
                             const float * const intensity,
                             const int n);
+
 
 // Custom debug macros
 #define M_CHECK_ERROR() mCheckError(__LINE__, __FILE__)
@@ -78,7 +73,7 @@ const int slmWidth = SLM_WIDTH;
 const int slmHeight = SLM_HEIGHT;
 const float slmPitch = 1.0f / ((float) SLM_WIDTH);
 const int numPixels = SLM_WIDTH * SLM_HEIGHT;
-const int numIterations = 1;
+const int numIterations = 10;
 const int numSpots = NUM_SPOTS;
 const int numLocalSumPerUnit = ceil(1.0 * numPixels/(BLOCK_SIZE * BLOCK_STRIDE));
 const int numLocalSum = numLocalSumPerUnit * NUM_CHANNELS * numSpots;
@@ -357,259 +352,6 @@ __device__ void warpReduce(volatile float *vRe, volatile float *vIm, int tid)
   vIm[tid] += vIm[tid + 1];
 }
 
-// Apply corrections to precalculated hologram
-__global__ void applyCorrections(// Hologram information
-                                 unsigned char * const hologram,       // hologram to use
-                                 const unsigned int slmDim,            // SLM's dimension
-                                 const float slmPitch,                 // 1/slmDim
-                                 // Correction information
-                                 const bool useAC,                     // use aberration correction
-                                 const float * const aberrationCoeffs, // correction coefficients
-                                 const bool useSVPR,                   // use spatially varying phase response
-                                 const int numPolCoeffs,               // number of polynomial coefficients
-                                 const float * const polCoeffs,        // polynomial coefficients
-                                 const bool useLUT,                    // use LUT for phase-to-uc conversion
-                                 const unsigned char * const lut)      // LUT for phase-to-uc conversion
-{
-  const int tid = threadIdx.x;
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-  float pixelPhase = uc2phase(hologram[idx]);
-  if (useAC)
-    pixelPhase = applyAberrationCorrection(pixelPhase, aberrationCoeffs[idx]);
-
-  if (useSVPR) {
-    int xIdx = getXIdx(idx, SLM_WIDTH);
-    int yIdx = getYIdx(idx, xIdx, slmPitch);
-    float x = getPixelCoords(xIdx, SLM_WIDTH, slmPitch);
-    float y = getPixelCoords(yIdx, SLM_WIDTH, slmPitch);
-
-    __shared__ float coeff[MAX_POL];
-    if (tid < numPolCoeffs)
-      coeff[tid] = polCoeffs[tid];
-    __syncthreads();
-
-    hologram[idx] = applySVPR(pixelPhase, x, y, coeff, numPolCoeffs);
-  } else if (useLUT) {
-    __shared__ unsigned char lut_t[MAX_UCHAR];
-    if (tid < MAX_UCHAR)
-      lut_t[tid] = lut[tid];
-    __syncthreads();
-
-    hologram[idx] = lut_t[phase2int(pixelPhase)];
-  } else {
-    hologram[idx] = phase2uc(pixelPhase);
-  }
-}
-
-// Calculate hologram using "Lenses and Prisms"
-__global__ void lensesAndPrisms(// Hologram information
-                                unsigned char * const hologram,       // hologram to use
-                                const int slmDim,
-                                const float slmPitch,                 // 1/slmDim
-                                const unsigned int numPixels,         // number of pixels in SLM
-                                // Spot information
-                                const float * const spotDesiredAmp,   // desired amplitudes of spots
-                                const unsigned int numSpots,          // number of spots
-                                // Correction information
-                                const bool useAC,                     // use aberration correction
-                                const float * const aberrationCoeffs, // correction coefficients
-                                const bool useSVPR,                   // use spatially varying phase response
-                                const int numPolCoeffs,               // number of polynomial coefficients
-                                const float * const polCoeffs,        // polynomial coefficients
-                                const bool useLUT,                    // use LUT for phase-to-uc conversion
-                                const unsigned char * const lut)      // LUT for phase-to-uc conversion
-{
-  __shared__ float spotx[MAX_SPOTS];
-  __shared__ float spoty[MAX_SPOTS];
-  __shared__ float spotz[MAX_SPOTS];
-
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  const int tid = threadIdx.x;
-
-  if (idx < numPixels) {
-    if (tid < numSpots) {
-      spotx[tid] = d_spotX[tid];
-      spoty[tid] = d_spotY[tid];
-      spotz[tid] = d_spotZ[tid];
-    }
-    __syncthreads();
-
-    float pixelPhase;
-    float vRe = 0.0f;
-    float vIm = 0.0f;
-
-    int xIdx = getXIdx(idx, slmDim);
-    int yIdx = getYIdx(idx, xIdx, slmPitch);
-    float x = getPixelCoords(xIdx, slmDim, slmPitch);
-    float y = getPixelCoords(yIdx, slmDim, slmPitch);
-
-    // Compute the pixel's phase by summing contributions from all spots
-    for (int i = 0; i < numSpots; i++) {
-      // TODO: Add variable phases to function call
-      pixelPhase = computePhase(x, y, spotx[i], spoty[i], spotz[i]);
-      vRe += spotDesiredAmp[i] * cosf(pixelPhase);
-      vIm += spotDesiredAmp[i] * sinf(pixelPhase);
-    }
-
-    pixelPhase = atan2f(vIm, vRe); // [-pi, pi]
-    if (useAC)
-      pixelPhase = applyAberrationCorrection(pixelPhase, aberrationCoeffs[idx]);
-
-    if (useSVPR) {
-      __shared__ float coeff[MAX_POL];
-      if (tid < numPolCoeffs)
-        coeff[tid] = polCoeffs[tid];
-      __syncthreads();
-
-      hologram[idx] = applySVPR(pixelPhase, x, y, coeff, numPolCoeffs);
-    } else if (useLUT) {
-      __shared__ unsigned char lut_t[MAX_UCHAR];
-      if (tid < MAX_UCHAR)
-        lut_t[tid] = lut[tid];
-      __syncthreads();
-
-      hologram[idx] = lut_t[phase2int(pixelPhase)];
-    } else {
-      hologram[idx] = phase2uc(pixelPhase);
-    }
-  }
-}
-
-__global__ void calculateI(// Hologram information
-                           const unsigned char * const hologram, // hologram to use
-                           const unsigned int slmDim,            // SLM's dimension
-                           const float slmPitch,                 // 1/slmDim
-                           const unsigned int numPixels,         // number of pixels in SLM
-                           // Spot information
-                           float * const spotI)                  // spot intensities
-{
-  __shared__ float vRe[SLM_SIZE];
-  __shared__ float vIm[SLM_SIZE];
-
-  const int blockSize = blockDim.x;
-  const int spotNumber = blockIdx.x;
-  const int tid = threadIdx.x;
-
-  const float spotx = d_spotX[spotNumber];
-  const float spoty = d_spotY[spotNumber];
-  const float spotz = d_spotZ[spotNumber];
-
-  vRe[tid] = 0.0f;
-  vIm[tid] = 0.0f;
-
-  float x = getPixelCoords(tid, slmDim, slmPitch);
-  float y = -0.5f; // (0 - slmDim/2) / slmDim
-
-  float pixelPhase;
-  int i = tid;
-  while (i < numPixels) {
-    pixelPhase = uc2phase(hologram[i]) - computePhase(x, y, spotx, spoty, spotz);
-
-    vRe[tid] += cosf(pixelPhase);
-    vIm[tid] += sinf(pixelPhase);
-
-    i += blockSize;
-    y += slmPitch;
-  }
-  __syncthreads();
-
-  if ((tid < 256) && (SLM_SIZE > 256)) {
-    vRe[tid] += vRe[tid + 256];
-    vIm[tid] += vIm[tid + 256];
-  }
-  __syncthreads();
-
-  if (tid < 128) {
-    vRe[tid] += vRe[tid + 128];
-    vIm[tid] += vIm[tid + 128];
-  }
-  __syncthreads();
-
-  if (tid < 64) {
-    vRe[tid] += vRe[tid + 64];
-    vIm[tid] += vIm[tid + 64];
-  }
-  __syncthreads();
-
-  if (tid < 32)
-    warpReduce(vRe, vIm, tid);
-
-  if (tid == 0) {
-    float re = vRe[0] / ((float) numPixels);
-    float im = vIm[0] / ((float) numPixels);
-    spotI[spotNumber] = re*re + im*im;
-  }
-}
-
-__global__ void calculateIAndPhase(// Hologram information
-                                   const unsigned char * const hologram, // hologram to use
-                                   const unsigned int slmDim,            // SLM's dimension
-                                   const float slmPitch,                 // 1/slmDim
-                                   const unsigned int numPixels,         // number of pixels in SLM
-                                   // Spot information
-                                   float * const spotI,                  // spot intensities
-                                   float * const spotP)                  // spot phases
-{
-  __shared__ float vRe[SLM_SIZE];
-  __shared__ float vIm[SLM_SIZE];
-
-  const int blockSize = blockDim.x;
-  const int spotNumber = blockIdx.x;
-  const int tid = threadIdx.x;
-
-  const float spotx = d_spotX[spotNumber];
-  const float spoty = d_spotY[spotNumber];
-  const float spotz = d_spotZ[spotNumber];
-  vRe[tid] = 0.0f;
-  vIm[tid] = 0.0f;
-
-  float x = getPixelCoords(tid, slmDim, slmPitch);
-  float y = -0.5f; // (0 - slmDim/2) / slmDim
-
-  float pixelPhase;
-  int i = tid;
-  while (i < numPixels) {
-    pixelPhase = uc2phase(hologram[i]) - computePhase(x, y, spotx, spoty, spotz);
-    pixelPhase += 2.0f * M_PI * spotz;
-
-    vRe[tid] += cosf(pixelPhase);
-    vIm[tid] += sinf(pixelPhase);
-
-    i += blockSize;
-    y += slmPitch;
-  }
-  __syncthreads();
-
-  if ((tid < 256) && (SLM_SIZE > 256)) {
-    vRe[tid] += vRe[tid + 256];
-    vIm[tid] += vIm[tid + 256];
-  }
-  __syncthreads();
-
-  if (tid < 128) {
-    vRe[tid] += vRe[tid + 128];
-    vIm[tid] += vIm[tid + 128];
-  }
-  __syncthreads();
-
-  if (tid < 64) {
-    vRe[tid] += vRe[tid + 64];
-    vIm[tid] += vIm[tid + 64];
-  }
-  __syncthreads();
-
-  if (tid < 32)
-    warpReduce(vRe, vIm, tid);
-
-  if (tid == 0) {
-    float re = vRe[0] / ((float) numPixels);
-    float im = vIm[0] / ((float) numPixels);
-    spotI[spotNumber] = re*re + im*im;
-    spotP[spotNumber] = atan2f(im, re);
-  }
-}
-
 // Propagate from the SLM to the spot positions using Fresnel summation
 // FIXME: Works only for blocksize = SLMsize
 __device__ inline float normalizeCoordinate(int idx, int total){
@@ -626,12 +368,13 @@ __global__ void propagateToSpotPositions(// Hologram information
 	__shared__ float vRe[BLOCK_SIZE];
 	__shared__ float vIm[BLOCK_SIZE];
 
+  const int numPixels = slmWidth * slmHeight;
 	int pixelIdx = blockIdx.x * BLOCK_SIZE * BLOCK_STRIDE + threadIdx.x;
+  int channelOffset = numPixels * blockIdx.z;
 	float spotx = d_spotX[blockIdx.y];
 	float spoty = d_spotY[blockIdx.y];
 	float spotz = d_spotZ[blockIdx.y];
 	int tid = threadIdx.x;
-	const int numPixels = slmWidth * slmHeight;
 	vRe[tid] = 0.0f;
 	vIm[tid] = 0.0f;
 
@@ -641,8 +384,7 @@ __global__ void propagateToSpotPositions(// Hologram information
 		int coordY = pixelIdx / slmWidth;
 		float normalX = normalizeCoordinate(coordX, slmWidth);
 		float normalY = normalizeCoordinate(coordY, slmHeight);
-		float pixelPhase = hologramPhase[pixelIdx] - computePhase(normalX, normalY, spotx, spoty, spotz);
-
+		float pixelPhase = hologramPhase[pixelIdx + channelOffset] - computePhase(normalX, normalY, spotx, spoty, spotz);
 		int validPixel = pixelIdx < numPixels;
 		vRe[tid] += cosf(pixelPhase) * validPixel;
 		vIm[tid] += sinf(pixelPhase) * validPixel;
@@ -794,6 +536,8 @@ __global__ void propagateToSLM(// Hologram information
 
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int tid = threadIdx.x;
+  const int channelSpotOffset = numSpots * blockDim.y;
+  const int channelPixelOffset = numPixels * blockDim.y;
 
   float pixelRe = 0.0f;
   float pixelIm = 0.0f;
@@ -803,8 +547,8 @@ __global__ void propagateToSLM(// Hologram information
     // Load spot phases, amplitudes, and weights
     // FIXME: would be faster on CPU?
     if (tid < numSpots) {
-      float re = spotRe[tid];
-      float im = spotIm[tid];
+      float re = spotRe[tid + channelSpotOffset];
+      float im = spotIm[tid + channelSpotOffset];
       spotP[tid] = atan2f(im, re);
       spotA[tid] = hypotf(re, im)/spotDesiredAmp[tid];
       if (iteration != 0) {
@@ -856,12 +600,12 @@ __global__ void propagateToSLM(// Hologram information
 
     pixelPhase = atan2f(pixelIm, pixelRe);
     if (useRPC) {
-      float prevPhase = prevHologramPhase[idx];
+      float prevPhase = prevHologramPhase[idx + channelPixelOffset];
       if (fabs(pixelPhase - prevPhase) > alpha)
         pixelPhase = prevPhase;
 
       if (lastIteration)
-        prevHologramPhase[idx] = pixelPhase;
+        prevHologramPhase[idx + channelPixelOffset] = pixelPhase;
     }
 
     // This is the last iteration, compute and write the final hologram phases to global memory
@@ -875,19 +619,19 @@ __global__ void propagateToSLM(// Hologram information
           coeff[tid] = polCoeffs[tid];
         __syncthreads();
 
-        hologram[idx] = applySVPR(pixelPhase, x, y, coeff, numPolCoeffs);
+        hologram[idx + channelPixelOffset] = applySVPR(pixelPhase, x, y, coeff, numPolCoeffs);
       } else if (useLUT) {
         __shared__ unsigned char lut_t[MAX_UCHAR];
         if (tid < MAX_UCHAR)
           lut_t[tid] = lut[tid];
         __syncthreads();
 
-        hologram[idx] = lut_t[phase2int(pixelPhase)];
+        hologram[idx + channelPixelOffset] = lut_t[phase2int(pixelPhase)];
       } else {
-        hologram[idx] = phase2uc(pixelPhase);
+        hologram[idx + channelPixelOffset] = phase2uc(pixelPhase);
       }
     } else { // Otherwise, write intermediate phases to global memory
-      hologramPhase[idx] = pixelPhase;
+      hologramPhase[idx + channelPixelOffset] = pixelPhase;
     }
   }
 }
@@ -1054,9 +798,8 @@ int setup(const float * const initPhases,       // initial pixel phases
   }
 
   /*** Hologram ***/
-
   hologramMemSize = numPixels * sizeof(unsigned char);
-  const unsigned int hologramPhaseMemSize = numPixels * sizeof(float);
+  const unsigned int hologramPhaseMemSize = numPixels * sizeof(float) * NUM_CHANNELS;
   M_SAFE_CALL(cudaMalloc((void **) &d_hologram, hologramMemSize));
   M_SAFE_CALL(cudaMalloc((void **) &d_hologramPhase, hologramPhaseMemSize));
   M_SAFE_CALL(cudaMalloc((void **) &d_prevHologramPhase, hologramPhaseMemSize));
@@ -1105,13 +848,11 @@ int setup(const float * const initPhases,       // initial pixel phases
     cudaMalloc((void **) &d_lut, MAX_UCHAR * sizeof(unsigned char));
     M_SAFE_CALL(cudaMemcpy(d_lut, lut, MAX_UCHAR * sizeof(unsigned char), cudaMemcpyHostToDevice));
   }
-
   // RPC
   if (useRPC && alpha < (2.0f * M_PI))
     useRPC = true;
   else
     useRPC = false;
-
   status = cudaGetLastError();
   return status;
 }
@@ -1120,31 +861,24 @@ int setup(const float * const initPhases,       // initial pixel phases
 int finish()
 {
   /*** Hologram ***/
-
   M_SAFE_CALL(cudaFree(d_hologram));
   M_SAFE_CALL(cudaFree(d_hologramPhase));
   M_SAFE_CALL(cudaFree(d_prevHologramPhase));
-
   /*** Spots ***/
-
   M_SAFE_CALL(cudaFree(d_desiredAmp));
   M_SAFE_CALL(cudaFree(d_spotRe));
   M_SAFE_CALL(cudaFree(d_spotIm));
   M_SAFE_CALL(cudaFree(d_weights));
   M_SAFE_CALL(cudaFree(d_obtainedI));
-
   if (useAC) {
     M_SAFE_CALL(cudaFree(d_aberrationCoeffs));
   }
-
   if (useSVPR) {
     M_SAFE_CALL(cudaFree(d_polCoeffs));
   }
-
   if (useLUT) {
     M_SAFE_CALL(cudaFree(d_lut));
   }
-
   cudaDeviceReset();
   status = cudaGetLastError();
   return status;
@@ -1158,210 +892,92 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                      const float * const spotI,      // relative intensities of spots/traps
                      const int numSpots,             // number of spots/traps
                      const int numIterations,        // number of iterations to run GSW
-                     float * const interAmps,        // intermediate amplitudes (debug)
-                     int method)                     // method to use for generating hologram
+                     float * const interAmps)        // intermediate amplitudes (debug)
 {
-	if (numSpots < 1)
-		method = 100;
-	else if (numSpots < 3)
-		method = 0;
-
 	computeAndCopySpotData(spotX, spotY, spotZ, spotI, numSpots);
 	double t;
-	int numBlocks;
-
 	dim3 toSpotGridDim(ceil(1.0 * NUM_PIXELS/(BLOCK_SIZE * BLOCK_STRIDE)),
     				              numSpots,
     				              NUM_CHANNELS);
-  dim3 toSpotBlockDim(BLOCK_SIZE, 1, 1);
-  dim3 toSpotSumGridDim(numSpots, NUM_CHANNELS, 1);
-  dim3 toSpotSumBlockDim(BLOCK_SIZE, 1, 1);
+	dim3 toSpotBlockDim(BLOCK_SIZE, 1, 1);
+	dim3 toSpotSumGridDim(numSpots, NUM_CHANNELS, 1);
+	dim3 toSpotSumBlockDim(BLOCK_SIZE, 1, 1);
+  dim3 toSLMGridDim(ceil(1.0 * numPixels/BLOCK_SIZE), NUM_CHANNELS, 1);
+  dim3 toSLMBlockDim(BLOCK_SIZE, 1, 1);
 
-	switch (method) {
-   		case 0:
-    		// Generate hologram using "Lenses and Prisms"
-    		printf("Starting Lenses and Prisms...\n");
-    		t = getClock();
-    		numBlocks = (numPixels/BLOCK_SIZE + (numPixels % BLOCK_SIZE ? 1 : 0));
-    		lensesAndPrisms<<<numBlocks, BLOCK_SIZE>>>(d_hologram,
-    												   slmWidth,
-        	                                           slmPitch,
-        	                                           numPixels,
-        	                                           d_desiredAmp,
-        	                                           numSpots,
-        	                                           useAC,
-        	                                           d_aberrationCoeffs,
-        	                                           useSVPR,
-        	                                           numPolCoeffs,
-        	                                           d_polCoeffs,
-        	                                           useLUT,
-        	                                           d_lut);
-    		M_CHECK_ERROR();
-    		cudaDeviceSynchronize();
-    		M_CHECK_ERROR();
+    printf("Starting Fresnel...\n");
+    t = getClock();
+    // Uncomment this to start with pre-calculated hologram
+    //cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
+    //cudaDeviceSynchronize();
+    //uc2f<<<numBlocks, BLOCK_SIZE >>>(d_hologramPhase, d_hologram, numPixels);
 
-    		if (saveSpotI) {
-        		calculateI<<<numSpots, SLM_SIZE>>>(d_hologram,
-        	                                       slmWidth,
-        	                                       slmPitch,
-        	                                       numPixels,
-        	                                       d_obtainedI);
-        		M_CHECK_ERROR();
-        		cudaDeviceSynchronize();
-        		M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, numSpots*sizeof(float), cudaMemcpyDeviceToHost));
-    		}
-    		M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
+    for (int l = 0; l < numIterations; l++) {
+       	printf("Iteration %d\n", l);
+       	propagateToSpotPositions<<<toSpotGridDim, toSpotBlockDim>>>(d_hologramPhase,
+       	                                                            slmWidth,
+       	                                                            slmHeight,
+       	                                                            d_local_spotRe,
+       	                                                            d_local_spotIm);
+       	M_CHECK_ERROR();
+       	cudaDeviceSynchronize();
+       	// Second level parallel reduction
+       	propagateToSpotSum<<<toSpotSumGridDim, toSpotSumBlockDim>>>(d_local_spotRe,
+                                                                    d_local_spotIm,
+                                                                    numLocalSumPerUnit,
+                                                                    numSpots,
+                                                                    d_spotRe,
+                                                                    d_spotIm);
+        M_CHECK_ERROR();
+        cudaDeviceSynchronize();
 
-    		t = getClock() - t;
-    		printf("Total time = %12.8lf seconds\n", t);
-    		break;
-    	case 1:
-    		// Generate holgram using fresnel propagation
-    		printf("Starting Fresnel...\n");
-    		t = getClock();
-    		numBlocks = (numPixels/BLOCK_SIZE + (numPixels % BLOCK_SIZE ? 1 : 0));
-    		// Uncomment this to start with pre-calculated hologram
-    		//cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
-    		//cudaDeviceSynchronize();
-    		//uc2f<<<numBlocks, BLOCK_SIZE >>>(d_hologramPhase, d_hologram, numPixels);
-
-    		for (int l = 0; l < numIterations; l++) {
-        		printf("Iteration %d\n", l);
-        		propagateToSpotPositions<<<toSpotGridDim, toSpotBlockDim>>>(d_hologramPhase,
-        		                                                            slmWidth,
-        		                                                            slmHeight,
-        		                                                            d_local_spotRe,
-        		                                                            d_local_spotIm);
-        		M_CHECK_ERROR();
-        		cudaDeviceSynchronize();
-
-        		// Second level parallel reduction
-        		propagateToSpotSum<<<toSpotSumGridDim, toSpotSumBlockDim>>>(d_local_spotRe,
-                                                                          d_local_spotIm,
-                                                                          numLocalSumPerUnit,
-                                                                          numSpots,
-                                                                          d_spotRe,
-                                                                          d_spotIm);
-            M_CHECK_ERROR();
-            cudaDeviceSynchronize();
-
-    		    propagateToSLM<<<numBlocks, BLOCK_SIZE>>>(d_hologram,
-    			                                            d_hologramPhase,
-    			                                            d_prevHologramPhase,
-    			                                            slmWidth,
-    			                                            slmPitch,
-    			                                            numPixels,
-    			                                            l,
-    			                                            (l == (numIterations - 1)),
-    			                                            d_desiredAmp,
-    			                                            d_spotRe,
-    			                                            d_spotIm,
-    			                                            d_weights,
-    			                                            d_obtainedI,
-    			                                            saveSpotI,
-    			                                            numSpots,
-    			                                            useAC,
-    			                                            d_aberrationCoeffs,
-    			                                            useSVPR,
-    			                                            numPolCoeffs,
-    			                                            d_polCoeffs,
-    			                                            useLUT,
-    			                                            d_lut,
-    			                                            useRPC,
-    			                                            alpha);
-    			M_CHECK_ERROR();
-    			cudaDeviceSynchronize();
-/*          // debuggin output
-            float* peekSpot = (float*)malloc(32 * sizeof(float));
-            cudaMemcpy(peekSpot, d_hologram, 32 * sizeof(float), cudaMemcpyDeviceToHost);
-            for (int i = 0; i < 32; ++i){
-              printf("%f ", peekSpot[i]);
-            }
-            printf("\n");
-            M_CHECK_ERROR();
-            cudaDeviceSynchronize();*/
-    		}
-
-
-    		if (saveSpotI)
-        		M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, weightMemSize, cudaMemcpyDeviceToHost));
-    		else
-    			M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
-    		M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
-
-	    	t = getClock() - t;
-	    	printf("Total time = %12.8lf seconds\n", t);
-	    	printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
-
-	    	break;
-		case 100:
-	    	// Apply corrections to pre-calculated hologram
-	    	numBlocks = (numPixels/BLOCK_SIZE + (numPixels % BLOCK_SIZE ? 1 : 0));
-	    	M_SAFE_CALL(cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice));
-	    	applyCorrections<<<numBlocks, BLOCK_SIZE>>>(d_hologram,
-	    	                                            slmWidth,
-	    	                                            slmPitch,
-	    	                                            useAC,
-	    	                                            d_aberrationCoeffs,
-	    	                                            useSVPR,
-	    	                                            numPolCoeffs,
-	    	                                            d_polCoeffs,
-	    	                                            useLUT,
-	    	                                            d_lut);
-	    	M_CHECK_ERROR();
-	    	cudaDeviceSynchronize();
-	    	M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
-			break;
-		default:
-			break;
-	}
+    	propagateToSLM<<<toSLMGridDim, toSLMBlockDim>>>(d_hologram,
+    	                                                d_hologramPhase,
+    	                                                d_prevHologramPhase,
+    	                                                slmWidth,
+    	                                                slmPitch,
+    	                                                numPixels,
+    	                                                l,
+    	                                                (l == (numIterations - 1)),
+    	                                                d_desiredAmp,
+    	                                                d_spotRe,
+    	                                                d_spotIm,
+    	                                                d_weights,
+    	                                                d_obtainedI,
+    	                                                saveSpotI,
+    	                                                numSpots,
+    	                                                useAC,
+    	                                                d_aberrationCoeffs,
+    	                                                useSVPR,
+    	                                                numPolCoeffs,
+    	                                                d_polCoeffs,
+    	                                                useLUT,
+    	                                                d_lut,
+    	                                                useRPC,
+    	                                                alpha);
+    	M_CHECK_ERROR();
+    	cudaDeviceSynchronize();
+        // debuggin output
+/*        float* peekSpot = (float*)malloc(32 * sizeof(float));
+        cudaMemcpy(peekSpot, d_hologram, 32 * sizeof(float), cudaMemcpyDeviceToHost);
+        for (int i = 0; i < 32; ++i){
+          printf("%f ", peekSpot[i]);
+        }
+        printf("\n");
+        M_CHECK_ERROR();
+        cudaDeviceSynchronize();*/
+    }
+    	
+    if (saveSpotI)
+    	M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, weightMemSize, cudaMemcpyDeviceToHost));
+    else
+   		M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
+    M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
+	t = getClock() - t;
+	printf("Total time = %12.8lf seconds\n", t);
+	printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
 
 	// Handle CUDA errors
-	status = cudaGetLastError();
-	return status;
-}
-
-// Calculate amplitude and phase at positions (x, y, z) from a given hologram
-int getAmpAndPhase(const float * spotX,                  // x coordinates of spots/traps
-                   const float * spotY,                  // y coordinates of spots/traps
-                   const float * spotZ,                  // z coordinates of spots/traps
-                   const int numSpots,                   // number of spots/traps
-                   const unsigned char * const hologram, // hologram to use
-                   float *amp,                           // amplitude at (x, y, z)
-                   float *phase)                         // phase at (x, y, z)
-{
-	float *d_amp;
-	float *d_phase;
-	cudaMalloc((void **) &d_amp, numSpots * sizeof(float));
-	cudaMalloc((void **) &d_phase, numSpots * sizeof(float));
-	cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
-
-	int offset = 0;
-	int numSpotsRem = numSpots;
-	int numSpotsThis;
-
-	while (numSpotsRem > 0) {
-    	numSpotsThis = (numSpotsRem > MAX_SPOTS) ? MAX_SPOTS : numSpotsRem;
-    	cudaMemcpy(d_spotX, spotX + offset, numSpotsThis * sizeof(float), cudaMemcpyHostToDevice);
-    	cudaMemcpy(d_spotY, spotY + offset, numSpotsThis * sizeof(float), cudaMemcpyHostToDevice);
-    	cudaMemcpy(d_spotZ, spotZ + offset, numSpotsThis * sizeof(float), cudaMemcpyHostToDevice);
-    	calculateIAndPhase<<<numSpotsThis, SLM_SIZE>>>(d_hologram,
-    	                                               slmWidth,
-    	                                               slmPitch,
-    	                                               numPixels,
-    	                                               d_amp + offset,
-    	                                               d_phase + offset);
-    	cudaDeviceSynchronize();
-
-    	numSpotsRem -= MAX_SPOTS;
-    	offset += numSpotsThis;
-	}
-
-	cudaMemcpy(amp, d_amp, numSpots * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(phase, d_phase, numSpots * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaFree(d_amp);
-	cudaFree(d_phase);
-
 	status = cudaGetLastError();
 	return status;
 }
@@ -1395,45 +1011,34 @@ void computeAndCopySpotData(const float * const x,
 	free(desiredAmp);
 }
 
-int main(int argc, char *argv[])
+unsigned char *hologram = (unsigned char *) malloc(numPixels * NUM_CHANNELS * sizeof(unsigned char));
+float *amps = (float *) malloc(numSpots * numIterations * NUM_CHANNELS * sizeof(float));
+float * const initPhases = (float *) malloc(numPixels * NUM_CHANNELS * sizeof(float)); // [-pi, pi];
+float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
+
+bool HLG_initailize()
 {
 	srand(1);
-	const int method = atoi(argv[1]); // 0 => Direct, 1 => Fresnel, 100 => Corrections
-
-	// Spots/traps. These form a quadrant across four planes.
-	const float x[] = {-128.0f, -128.0f, 127.0f, 127.0f};
-	const float y[] = {127.0f, -128.0f, 127.0f, -128.0f};
-	const float z[] = {1.0f, 2.0f, 3.0f, 4.0f};
-	const float I[] = {0.12f, 0.34f, 0.56f, 0.78f};
-
 	// Correction parameters
-	saveSpotI = true;
+	saveSpotI = false;
 	useAC = false;
 	const float * const aberrationCoeffs = NULL;
-
-	useSVPR = false;
+	useSVPR = true;
 	polOrder = 5;
-	float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
 	for (int i = 0; i < MAX_POL; i++) {
 		polCoeffs[i] = 0.0f;
 	}
-
 	useLUT = false;
 	const unsigned char * const lut = NULL;
-
 	useRPC = false;
 	alpha = 2.0f * M_PI * 0.123f;
-
-	unsigned char *hologram = (unsigned char *) malloc(numPixels * sizeof(unsigned char));
-	float *amps = (float *) malloc(numSpots * numIterations * sizeof(float));
-	float * const initPhases = (float *) malloc(numPixels * sizeof(float)); // [-pi, pi]
 #ifdef M_CORE_DEBUG
   FILE *savedPhase = fopen("my_init_hologram.dat", "r");
-  for (int i = 0; i < numPixels; i++) {
+  for (int i = 0; i < numPixels * NUM_CHANNELS; i++) {
     fscanf(savedPhase, "%hhu\n", &hologram[i]);
   }
 #else
-  for (int i = 0; i < numPixels; i++) {
+  for (int i = 0; i < numPixels * NUM_CHANNELS; i++) {
 		hologram[i] = random() % 256;
 		initPhases[i] = (2.0 * M_PI * (random() / ((float) RAND_MAX))) - M_PI;
 	}
@@ -1450,23 +1055,35 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < numPixels; i++) {
 		fprintf(ifile, "%hhu\n", hologram[i]);
 	}
+  fclose(ifile);
 #endif
+  return true;
+}
 
-	double t = getClock();
+bool HLG_process(){
+  // Randomize depth planes
+  float x[NUM_SPOTS];
+  float y[NUM_SPOTS];
+  float z[NUM_SPOTS];
+  float I[NUM_SPOTS];
+  for (int spotIdx = 0; spotIdx < NUM_SPOTS; ++spotIdx){
+    x[spotIdx] = (float)(random() & (0xFF)) - 128.0f;
+    y[spotIdx] = (float)(random() & (0xFF)) - 128.0f;
+    z[spotIdx] = (float)(random() & (0xFF)) - 128.0f;
+    I[spotIdx] = (float)(random() & (0xFF)) / 256.0f;
+  }
+  if (generateHologram(hologram, x, y, z, I, numSpots, numIterations, amps) != 0) {
+  	printf("Computation failed.\n");
+    return false;
+  }
+  return true;
+}
 
-	if (generateHologram(hologram, x, y, z, I, numSpots, numIterations, amps, method) != 0) {
-		printf("Computation failed.\n");
-		exit(1);
-	}
-
-	t = getClock() - t;
-
-	if (finish() != 0) {
-		printf("Cleanup failed.\n");
-		exit(1);
-	}
-
-	printf("Total time = %12.8lf seconds\n", t);
+bool HLG_cleanup(){
+  if (finish() != 0) {
+    printf("Cleanup failed.\n");
+    return false;
+  }
 
 	// Save hologram
 	FILE *hfile = fopen("new_output_hologram.dat", "w");
@@ -1480,16 +1097,15 @@ int main(int argc, char *argv[])
 		fprintf(afile, "%f\n", amps[i]);
 	}
 #ifndef M_CORE_DEBUG
-	fclose(ifile);
+	
 #endif
 	fclose(hfile);
 	fclose(afile);
-
 	free(polCoeffs);
 	free(hologram);
 	free(initPhases);
 	free(amps);
 
-	return 0;
+	return true;
 }
 
