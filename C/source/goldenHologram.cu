@@ -1331,7 +1331,7 @@ int main(int argc, char *argv[])
   slmDim = SLM_SIZE;
   slmPitch = 1.0f / ((float) slmDim);
   numPixels = slmDim * slmDim;
-  numIterations = 1; // 10 iterations for convergence
+  numIterations = 10; // 10 iterations for convergence
   numSpots = 4;
 
   // Spots/traps. These form a quadrant across four planes.
