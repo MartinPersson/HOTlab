@@ -35,15 +35,15 @@
 #define MAX_POL 120
 #define MAX_UCHAR 256
 
-#define BLOCK_SIZE 256
+#define BLOCK_SIZE 1024
 #define BLOCK_STRIDE 8
 
 // FIXME: This shouldn't be hardcoded
-#define SLM_HEIGHT 256
-#define SLM_WIDTH 256
+#define SLM_HEIGHT 4096
+#define SLM_WIDTH 4096
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
-#define NUM_SPOTS 4
+#define NUM_SPOTS 16
 
 void computeAndCopySpotData(const float * const x,
                             const float * const y,
@@ -148,23 +148,13 @@ __device__ inline float applyAberrationCorrection(float pSpot, const float corre
 // Get x coordinate from global thread ID
 __device__ inline int getXIdx(const int index, const int slmDim)
 {
-#ifdef SLMPOW2
-  int idx = index & (slmDim - 1);
-#else
-  int idx = index % slmDim;
-#endif
-  return idx;
+  return index % slmDim;
 }
 
 // Get y coordinate from global thread ID and x coordinate
 __device__ inline int getYIdx(const int index, const int xIdx, const float slmPitch)
 {
-#ifdef SLMPOW2
-  int idx = (index - xIdx) >> 9; // FIXME
-#else
-  int idx = floor(((float) (index - xIdx)) * slmPitch);
-#endif
-  return idx;
+  return floor(((float) (index - xIdx)) * slmPitch);
 }
 
 // Get pixel coordinates in [-0.5, 0.5]
@@ -368,9 +358,9 @@ __global__ void propagateToSpotPositions(// Hologram information
 	__shared__ float vRe[BLOCK_SIZE];
 	__shared__ float vIm[BLOCK_SIZE];
 
-  const int numPixels = slmWidth * slmHeight;
+  	const int numPixels = slmWidth * slmHeight;
 	int pixelIdx = blockIdx.x * BLOCK_SIZE * BLOCK_STRIDE + threadIdx.x;
-  int channelOffset = numPixels * blockIdx.z;
+  	int channelOffset = numPixels * blockIdx.z;
 	float spotx = d_spotX[blockIdx.y];
 	float spoty = d_spotY[blockIdx.y];
 	float spotz = d_spotZ[blockIdx.y];
@@ -536,8 +526,8 @@ __global__ void propagateToSLM(// Hologram information
 
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int tid = threadIdx.x;
-  const int channelSpotOffset = numSpots * blockDim.y;
-  const int channelPixelOffset = numPixels * blockDim.y;
+  const int channelSpotOffset = numSpots * blockIdx.y;
+  const int channelPixelOffset = numPixels * blockIdx.y;
 
   float pixelRe = 0.0f;
   float pixelIm = 0.0f;
@@ -798,7 +788,7 @@ int setup(const float * const initPhases,       // initial pixel phases
   }
 
   /*** Hologram ***/
-  hologramMemSize = numPixels * sizeof(unsigned char);
+  hologramMemSize = numPixels * sizeof(unsigned char) * NUM_CHANNELS;
   const unsigned int hologramPhaseMemSize = numPixels * sizeof(float) * NUM_CHANNELS;
   M_SAFE_CALL(cudaMalloc((void **) &d_hologram, hologramMemSize));
   M_SAFE_CALL(cudaMalloc((void **) &d_hologramPhase, hologramPhaseMemSize));
@@ -902,8 +892,8 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
 	dim3 toSpotBlockDim(BLOCK_SIZE, 1, 1);
 	dim3 toSpotSumGridDim(numSpots, NUM_CHANNELS, 1);
 	dim3 toSpotSumBlockDim(BLOCK_SIZE, 1, 1);
-  dim3 toSLMGridDim(ceil(1.0 * numPixels/BLOCK_SIZE), NUM_CHANNELS, 1);
-  dim3 toSLMBlockDim(BLOCK_SIZE, 1, 1);
+  	dim3 toSLMGridDim(ceil(1.0 * numPixels/BLOCK_SIZE), NUM_CHANNELS, 1);
+  	dim3 toSLMBlockDim(BLOCK_SIZE, 1, 1);
 
     printf("Starting Fresnel...\n");
     t = getClock();
