@@ -41,7 +41,7 @@
 #define BLOCK_SIZE 256
 
 // FIXME: This shouldn't be hardcoded
-#define SLM_SIZE 256
+#define SLM_SIZE 1024
 
 // Use bitwise modulo operations if the SLM size is a power of 2
 #if (((SLM_SIZE - 1) & (SLM_SIZE)) == 0)
@@ -156,7 +156,7 @@ __device__ inline int getXIdx(const int index, const int slmDim)
 __device__ inline int getYIdx(const int index, const int xIdx, const float slmPitch)
 {
 #ifdef SLMPOW2
-  int idx = (index - xIdx) >> 9; // FIXME
+  int idx = (index - xIdx) >> 10; // FIXME
 #else
   int idx = floor(((float) (index - xIdx)) * slmPitch);
 #endif
