@@ -35,11 +35,11 @@
 #define MAX_POL 120
 #define MAX_UCHAR 256
 
-#define BLOCK_SIZE 1024
-#define BLOCK_STRIDE 8
+#define BLOCK_SIZE 256
+#define BLOCK_STRIDE 4
 
 // FIXME: This shouldn't be hardcoded
-#define SLM_HEIGHT 4096
+#define SLM_HEIGHT 2048
 #define SLM_WIDTH 4096
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
@@ -520,9 +520,9 @@ __global__ void propagateToSLM(// Hologram information
                                const float alpha)                    // RPC threshold
 {
   __shared__ float spotAMean;
-  __shared__ float spotP[MAX_SPOTS];
-  __shared__ float spotA[MAX_SPOTS];
-  __shared__ float spotW[MAX_SPOTS];
+  __shared__ float spotP[NUM_SPOTS];
+  __shared__ float spotA[NUM_SPOTS];
+  __shared__ float spotW[NUM_SPOTS];
 
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int tid = threadIdx.x;
@@ -1008,6 +1008,7 @@ float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
 
 bool HLG_initailize()
 {
+    double t = getClock();
 	srand(1);
 	// Correction parameters
 	saveSpotI = false;
@@ -1039,7 +1040,7 @@ bool HLG_initailize()
 		exit(1);
 	}
 
-#ifndef M_CORE_DEBUG
+#ifdef M_CORE_DEBUG
 	// Save initial hologram
 	FILE *ifile = fopen("my_init_hologram.dat", "w");
 	for (int i = 0; i < numPixels; i++) {
@@ -1047,6 +1048,10 @@ bool HLG_initailize()
 	}
   fclose(ifile);
 #endif
+
+  t = getClock() - t;
+  printf("Setup time = %12.8lf seconds\n", t);
+
   return true;
 }
 
@@ -1075,6 +1080,7 @@ bool HLG_cleanup(){
     return false;
   }
 
+#ifdef M_CORE_DEBUG
 	// Save hologram
 	FILE *hfile = fopen("new_output_hologram.dat", "w");
 	for (int i = 0; i < numPixels; i++) {
@@ -1086,11 +1092,10 @@ bool HLG_cleanup(){
 	for (int i = 0; i < numSpots * numIterations; i++) {
 		fprintf(afile, "%f\n", amps[i]);
 	}
-#ifndef M_CORE_DEBUG
-	
-#endif
+
 	fclose(hfile);
 	fclose(afile);
+#endif
 	free(polCoeffs);
 	free(hologram);
 	free(initPhases);
