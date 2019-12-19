@@ -417,7 +417,7 @@ __global__ void propagateToSpotPositions(// Hologram information
     if (tid < 32)
         warpReduce(vRe, vIm, tid);
 
-	// put back the local sum to global memory
+    // put back the local sum to global memory
     int localSumIdx = blockIdx.x + blockIdx.y * gridDim.x + blockIdx.z * gridDim.x * gridDim.y;
     if (tid == 0) {
         spotRe[localSumIdx] = vRe[0];
@@ -621,7 +621,7 @@ __global__ void propagateToSLM(// Hologram information
             } else {
                 hologram[idx + channelPixelOffset] = phase2uc(pixelPhase);
             }
-        } else { 
+        } else {
             // Otherwise, write intermediate phases to global memory
             hologramPhase[idx + channelPixelOffset] = pixelPhase;
         }
@@ -800,7 +800,7 @@ int setup(const float * const initPhases,       // initial pixel phases
 
     /*** Spots ***/
     const unsigned int spotMemSize = numSpots * sizeof(float);
-    // local spot values for each thread block 
+    // local spot values for each thread block
     M_SAFE_CALL(cudaMalloc((void **) &d_local_spotRe, numLocalSum * sizeof(float)));
     M_SAFE_CALL(cudaMalloc((void **) &d_local_spotIm, numLocalSum * sizeof(float)));
     // final spot values
@@ -957,7 +957,7 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
     printf("Total time = %12.8lf seconds\n", t);
     printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
 
-	// Handle CUDA errors
+    // Handle CUDA errors
     status = cudaGetLastError();
     return status;
 }
@@ -968,13 +968,13 @@ void computeAndCopySpotData(const float * const x,
                             const float * const intensity,
                             const int n)
 {
-	// An alternate way is to use sum instead of 100 in the formula below, but
-	// I'm not sure what the difference is
-	/*
-	float sum = 0.0f;
-	for (int i = 0; i < n; i++)
-		sum += intensity[i];
-	*/
+  // An alternate way is to use sum instead of 100 in the formula below, but
+  // I'm not sure what the difference is
+  /*
+  float sum = 0.0f;
+  for (int i = 0; i < n; i++)
+    sum += intensity[i];
+  */
     const float slmDimf = (float) slmWidth;
     float *desiredAmp = (float *) malloc(n * sizeof(float));
 
@@ -1032,7 +1032,7 @@ bool HLG_initailize()
     }
 
 #ifdef M_CORE_DEBUG
-	// Save initial hologram
+    // Save initial hologram
     FILE *ifile = fopen("my_init_hologram.dat", "w");
     for (int i = 0; i < numPixels; i++) {
         fprintf(ifile, "%hhu\n", hologram[i]);
@@ -1072,13 +1072,13 @@ bool HLG_cleanup(){
     }
 
 #ifdef M_CORE_DEBUG
-	// Save hologram
+    // Save hologram
     FILE *hfile = fopen("new_output_hologram.dat", "w");
     for (int i = 0; i < numPixels; i++) {
         fprintf(hfile, "%hhu\n", hologram[i]);
     }
 
-	// Save amplitudes
+    // Save amplitudes
     FILE *afile = fopen("new_amps.dat", "w");
     for (int i = 0; i < numSpots * numIterations; i++) {
         fprintf(afile, "%f\n", amps[i]);
