@@ -24,7 +24,6 @@
 #define M_CUDA_DEBUG
 //#define M_CORE_DEBUG
 
-// Includes
 #include "hologram.h"
 
 #ifndef M_PI
@@ -348,6 +347,7 @@ __device__ void warpReduce(volatile float *vRe, volatile float *vIm, int tid)
 }
 
 // Propagate from the SLM to the spot positions using Fresnel summation
+__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSpotPositions(// Hologram information
                                          const float * const hologramPhase,    // hologram's phase
                                          const int slmWidth,
@@ -426,6 +426,7 @@ __global__ void propagateToSpotPositions(// Hologram information
 }
 
 // Additional kernel to sum up local sums
+__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSpotSum(float* local_spotRe,
                                     float* local_spotIm,
                                     const int numLocalSumPerUnit,
@@ -493,6 +494,7 @@ __global__ void propagateToSpotSum(float* local_spotRe,
 };
 
 // Obtain phases in SLM plane
+__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSLM(// Hologram information
                                unsigned char * const hologram,       // output hologram
                                float * const hologramPhase,          // current hologram phase
@@ -625,15 +627,6 @@ __global__ void propagateToSLM(// Hologram information
             // Otherwise, write intermediate phases to global memory
             hologramPhase[idx + channelPixelOffset] = pixelPhase;
         }
-    }
-}
-
-// Convert from unsigned char [0, 255] to float [-pi, pi]
-__global__ void uc2f(float *f, const unsigned char * const uc, int N)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < N) {
-        f[idx] = uc[idx] * 2.0f * M_PI/256.0f - M_PI;
     }
 }
 
@@ -896,10 +889,6 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
 
     printf("Starting Fresnel...\n");
     t = getClock();
-    // Uncomment this to start with pre-calculated hologram
-    //cudaMemcpy(d_hologram, hologram, hologramMemSize, cudaMemcpyHostToDevice);
-    //cudaDeviceSynchronize();
-    //uc2f<<<numBlocks, BLOCK_SIZE >>>(d_hologramPhase, d_hologram, numPixels);
 
     for (int l = 0; l < numIterations; l++) {
         printf("Iteration %d\n", l);
@@ -968,13 +957,13 @@ void computeAndCopySpotData(const float * const x,
                             const float * const intensity,
                             const int n)
 {
-  // An alternate way is to use sum instead of 100 in the formula below, but
-  // I'm not sure what the difference is
-  /*
-  float sum = 0.0f;
-  for (int i = 0; i < n; i++)
-    sum += intensity[i];
-  */
+    // An alternate way is to use sum instead of 100 in the formula below, but
+    // I'm not sure what the difference is
+    /*
+    float sum = 0.0f;
+    for (int i = 0; i < n; i++)
+        sum += intensity[i];
+    */
     const float slmDimf = (float) slmWidth;
     float *desiredAmp = (float *) malloc(n * sizeof(float));
 
