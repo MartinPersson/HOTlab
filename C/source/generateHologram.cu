@@ -347,7 +347,6 @@ __device__ void warpReduce(volatile float *vRe, volatile float *vIm, int tid)
 }
 
 // Propagate from the SLM to the spot positions using Fresnel summation
-__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSpotPositions(// Hologram information
                                          const float * const hologramPhase,    // hologram's phase
                                          const int slmWidth,
@@ -426,7 +425,6 @@ __global__ void propagateToSpotPositions(// Hologram information
 }
 
 // Additional kernel to sum up local sums
-__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSpotSum(float* local_spotRe,
                                     float* local_spotIm,
                                     const int numLocalSumPerUnit,
@@ -494,7 +492,6 @@ __global__ void propagateToSpotSum(float* local_spotRe,
 };
 
 // Obtain phases in SLM plane
-__launch_bounds__(BLOCK_SIZE, 2048/BLOCK_SIZE/2)
 __global__ void propagateToSLM(// Hologram information
                                unsigned char * const hologram,       // output hologram
                                float * const hologramPhase,          // current hologram phase
