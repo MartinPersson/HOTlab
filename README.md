@@ -1,7 +1,7 @@
 
-# Computational Hologram
+# Computational Holography
 
-This component is responsible for calculating the hologram, the per pixel phase mask, using WeightedGerchberg–Saxton(GSW) algorithm. Base on an existing GPU implementation of the algorithm, we extend the code to be capable of computing arbitrary size hologram and improve the parallelisation.
+This component of ILLIXR is responsible for calculating image holograms (per-pixel phase masks) using the Weighted Gerchberg–Saxton(GSW) algorithm.
 
 # Files
 
