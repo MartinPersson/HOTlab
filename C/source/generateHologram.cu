@@ -25,7 +25,7 @@
 //#define M_CORE_DEBUG
 
 #include "hologram.h"
-
+#include "stats.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
 #endif
@@ -37,11 +37,11 @@
 #define BLOCK_SIZE 256
 #define BLOCK_STRIDE 4
 
-#define SLM_HEIGHT 2048
-#define SLM_WIDTH 4096
+#define SLM_HEIGHT 1024
+#define SLM_WIDTH 2048
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
-#define NUM_SPOTS 16
+#define NUM_SPOTS 2
 
 // forward declaration
 void computeAndCopySpotData(const float * const x,
@@ -884,11 +884,11 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
     dim3 toSLMGridDim(ceil(1.0 * numPixels/BLOCK_SIZE), NUM_CHANNELS, 1);
     dim3 toSLMBlockDim(BLOCK_SIZE, 1, 1);
 
-    printf("Starting Fresnel...\n");
+    //printf("Starting Fresnel...\n");
     t = getClock();
 
     for (int l = 0; l < numIterations; l++) {
-        printf("Iteration %d\n", l);
+        //printf("Iteration %d\n", l);
         propagateToSpotPositions<<<toSpotGridDim, toSpotBlockDim>>>(d_hologramPhase,
                                                                     slmWidth,
                                                                     slmHeight,
@@ -940,9 +940,9 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
         M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
     M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
     t = getClock() - t;
-    printf("Total time = %12.8lf seconds\n", t);
-    printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
-
+    //printf("Total time = %12.8lf seconds\n", t);
+    //printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
+    printf("%12.8lf\n", t);
     // Handle CUDA errors
     status = cudaGetLastError();
     return status;
@@ -1027,7 +1027,7 @@ bool HLG_initailize()
 #endif
 
     t = getClock() - t;
-    printf("Setup time = %12.8lf seconds\n", t);
+    //printf("Setup time = %12.8lf seconds\n", t);
 
     return true;
 }

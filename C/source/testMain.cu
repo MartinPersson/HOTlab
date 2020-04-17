@@ -24,7 +24,11 @@
 int main(int argc, char *argv[])
 {
 	HLG_initailize();
-	HLG_process();
-	HLG_cleanup();
+
+   for (int i = 0; i < 60 * 2 * 60; ++i){
+	  HLG_process();
+	}
+
+   HLG_cleanup();
 	return 0;
 }
