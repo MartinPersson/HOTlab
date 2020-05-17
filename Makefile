@@ -14,21 +14,21 @@ all: debug
 debug: NVCCFLAGS+=-g
 debug: CFLAGS+=-g
 debug: CXXFLAGS+=-g
-debug: hologram.so solo
+debug: libhologram.so solo
 
 release: NVCCFLAGS+=-O3
 release: CFLAGS+=-O3
 release: CXXFLAGS+=-O3
-release: hologram.so solo
+release: libhologram.so solo
 
-hologram.so: hologram.cpp C/source/generateHologram.cu C/source/stats.c C/source/hologram.h C/source/stats.h
+libhologram.so: hologram.cpp C/source/generateHologram.cu C/source/stats.c C/source/hologram.h C/source/stats.h
 	$(CXX) $(CXXFLAGS) -IC/source -c hologram.cpp -o hologram.o
 	$(CC) $(CFLAGS) -c C/source/stats.c -o stats.o
 	$(NVCC) $(NVCCFLAGS) --compiler-options "$(CFLAGS)" --linker-options "$(LDFLAGS)" hologram.o stats.o C/source/generateHologram.cu -shared -o $@
 
 solo: hologram.cpp C/source/testMain.cu C/source/generateHologram.cu C/source/stats.c C/source/hologram.h C/source/stats.h
 	$(CC) $(CFLAGS) -c C/source/stats.c -o stats.o
-	$(NVCC) $(NVCCFLAGS) --compiler-options "$(CFLAGS)" --linker-options "$(LDFLAGS)" C/source/testMain.cu stats.o C/source/generateHologram.cu -o hologram
+	$(NVCC) $(NVCCFLAGS) --compiler-options "$(CFLAGS)" --linker-options "$(LDFLAGS)" C/source/testMain.cu stats.o C/source/generateHologram.cu -o hologram_solo
 
 clean:
 	$(RM) hologram.so *.o

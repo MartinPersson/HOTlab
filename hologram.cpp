@@ -1,11 +1,14 @@
-#include "common/component.hh"
+#include "common/plugin.hh"
 #include "common/switchboard.hh"
+#include "common/phonebook.hh"
 #include "common/data_format.hh"
+#include "common/logger.hh"
 #include "hologram.h"
-
+#include <chrono>
 #include <thread>
 #include <cstdio>
 #include <cstdlib>
+#include <atomic>
 
 #include "stats.h"
 
@@ -14,16 +17,18 @@ using std::unique_ptr;
 using std::thread;
 using std::atomic;
 
-class hologram : public component {
+class hologram : public plugin {
 public:
-	hologram(unique_ptr<reader_latest<hologram_input>>&& in_ev,
-	         unique_ptr<writer<hologram_output>>&& out_ev)
-		: _m_in{std::move(in_ev)}
-		, _m_out{std::move(out_ev)}
+	hologram(phonebook *pb)
+		: sb{pb->lookup_impl<switchboard>()}
+		, _m_in{sb->subscribe_latest<hologram_input>("hologram_in")}
+		, _m_out{sb->publish<hologram_output>("hologram_out")}
 		, _seq_expect(1)
 		, _stat_processed(0)
 		, _stat_missed(0)
-	{ }
+	{
+		logger = new start_end_logger("hologram");
+	}
 
 	void main_loop() {
 		while (!_m_terminate.load()) {
@@ -40,19 +45,14 @@ public:
 			}
 			_stat_processed++;
 			//printf("[Hologram] Running sample %ld, samples dropped since last sample: %ld\n", _stat_processed, _stat_missed);
+			logger->log_start(std::chrono::high_resolution_clock::now());
 			HLG_process();
+			logger->log_end(std::chrono::high_resolution_clock::now());
 			_seq_expect = in->seq+1;
 		}
 	}
 
-private:
-	unique_ptr<reader_latest<hologram_input>> _m_in;
-	unique_ptr<writer<hologram_output>> _m_out;
-	thread _m_thread;
-	atomic<bool> _m_terminate {false};
-	long long _seq_expect, _stat_processed, _stat_missed;
-
-	virtual void _p_start() override {
+	virtual void start() override {
 		if (!HLG_initailize()) {
 			fprintf(stderr, "Hologram Initialization failed\n");
 			exit(1);
@@ -60,14 +60,21 @@ private:
 		_m_thread = thread{&hologram::main_loop, this};
 	}
 
-	virtual void _p_stop() override {
+	virtual void _p_stop() {
 		_m_terminate.store(true);
 		_m_thread.join();
 	}
+
+private:
+	switchboard *sb;
+	start_end_logger* logger;
+	unique_ptr<reader_latest<hologram_input>> _m_in;
+	unique_ptr<writer<hologram_output>> _m_out;
+	thread _m_thread;
+	atomic<bool> _m_terminate {false};
+	long long _seq_expect, _stat_processed, _stat_missed;
+
 };
 
-extern "C" component* create_component(switchboard* sb) {
-	auto in_ev = sb->subscribe_latest<hologram_input>("hologram_in");
-	auto out_ev = sb->publish<hologram_output>("hologram_out");
-	return new hologram{std::move(in_ev), std::move(out_ev)};
-}
+
+PLUGIN_MAIN(hologram)
