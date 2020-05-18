@@ -1,8 +1,8 @@
-#include "common/plugin.hh"
-#include "common/switchboard.hh"
-#include "common/phonebook.hh"
-#include "common/data_format.hh"
-#include "common/logger.hh"
+#include "common/plugin.hpp"
+#include "common/switchboard.hpp"
+#include "common/phonebook.hpp"
+#include "common/data_format.hpp"
+#include "common/logger.hpp"
 #include "hologram.h"
 #include <chrono>
 #include <thread>
