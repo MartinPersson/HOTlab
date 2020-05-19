@@ -27,22 +27,34 @@ CUDA kernel that calculates the error function of depth spots and updates the SL
 
 The original hologram implementation we are improving from.
 
-# Installation & Usage
+# Build
 
-Under `C/source/`
+Building hologram for illixr is automatically done when building the whole illixr project.
+Here is how to build it individually
 
-    make all
-    make jetson
+Debug build plugin for illixr
 
-Make all is compiling using SM75 architecture, while jetson is using SM70 architecture. To run this code on a older NVIDIA GPU,  please change the SM architecture accordingly.
+```sh
+make 
+```
 
-To run our modified hologram code,
+or
 
-    ./hologram
+```sh
+make dbg_so
+```
 
-To run the original hologram code.
+Release build plugin for illixr
 
-    ./goldenHologram
+```sh
+make opt_so
+```
+
+Standalone executable build
+
+```sh
+make solo
+```
 
 # ILLIXR integration
 
