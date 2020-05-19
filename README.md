@@ -1,7 +1,7 @@
 
 # Computational Holography
 
-Part of [ILLIXR](https://github.com/ILLIXR/ILLIXR), the Illinios Extended Reality Benchmark Suite. This component is responsible for calculating image holograms (per-pixel phase masks) using the Weighted Gerchberg–Saxton(GSW) algorithm.
+Part of [ILLIXR](https://github.com/ILLIXR/ILLIXR), the Illinios Extended Reality Benchmark Suite. This component is responsible for calculating image holograms (per-pixel phase masks) using the Weighted Gerchberg–Saxton (GSW) algorithm.
 
 # Files
 
