@@ -5,27 +5,31 @@ Part of [ILLIXR](https://github.com/ILLIXR/ILLIXR), the Illinios Extended Realit
 
 # Files
 
+## hologram.<span></span>cpp
+
+Illixr plugin interface file for integrating hologram into illixr.
+
 ## generateHologram.<span></span>cu
 
 ### generateHologram
 
-Host side kernel launch 
+Host side kernel launch code.
 
 ### propagateToSpotPositions
 
-CUDA kernel that propagates from the SLM phases to the spot positions using Fresnel summation.
+CUDA kernel that propagates phases from the SLM plane to the depth plane using Fresnel summation.
 
 ### propagateToSpotSum
 
-CUDA kernel that sums up the per thread block result from propagateToSpotPositions kernel.
+CUDA kernel that sums up the per-thread block results from the propagateToSpotPositions() kernel.
 
 ### propagateToSLM
 
-CUDA kernel that calculates the error function of depth spots and updates the SLM phases.
+CUDA kernel that calculates the error function at the depth planes and updates the SLM phases.
 
 ## goldenHologram.<span></span>cu
 
-The original hologram implementation we are improving from.
+The original hologram implementation. This implementation did not support arbitrary SLM sizes and colored holograms.
 
 # Build
 
