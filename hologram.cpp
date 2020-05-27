@@ -21,8 +21,8 @@ class hologram : public plugin {
 public:
 	hologram(phonebook *pb)
 		: sb{pb->lookup_impl<switchboard>()}
-		, _m_in{sb->subscribe_latest<hologram_input>("hologram_in")}
-		, _m_out{sb->publish<hologram_output>("hologram_out")}
+		, _m_in{sb->get_reader<hologram_input>("hologram_in")}
+		, _m_out{sb->get_writer<hologram_output>("hologram_out")}
 		, _seq_expect(1)
 		, _stat_processed(0)
 		, _stat_missed(0)
@@ -32,7 +32,7 @@ public:
 
 	void main_loop() {
 		while (!_m_terminate.load()) {
-			auto in = _m_in->get_latest_ro();
+			auto in = _m_in.get_latest_ro();
 			if (!in || in->seq == _seq_expect-1) {
 				// No new data, sleep
 				std::this_thread::yield(); // ←_←
@@ -68,8 +68,8 @@ public:
 private:
 	switchboard *sb;
 	start_end_logger* logger;
-	unique_ptr<reader_latest<hologram_input>> _m_in;
-	unique_ptr<writer<hologram_output>> _m_out;
+	switchboard::reader<hologram_input> _m_in;
+	switchboard::writer<hologram_output> _m_out;
 	thread _m_thread;
 	atomic<bool> _m_terminate {false};
 	long long _seq_expect, _stat_processed, _stat_missed;
