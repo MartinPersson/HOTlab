@@ -19,8 +19,9 @@ using std::atomic;
 
 class hologram : public plugin {
 public:
-	hologram(phonebook *pb)
-		: sb{pb->lookup_impl<switchboard>()}
+	hologram(std::string name_, phonebook* pb_)
+		: threadloop{name_, pb_}
+		, sb{pb->lookup_impl<switchboard>()}
 		, _m_in{sb->subscribe_latest<hologram_input>("hologram_in")}
 		, _m_out{sb->publish<hologram_output>("hologram_out")}
 		, _seq_expect(1)
