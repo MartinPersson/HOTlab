@@ -54,7 +54,12 @@ public:
 	}
 
 private:
+<<<<<<< HEAD
 	switchboard *sb;
+=======
+	const std::shared<switchboard>*sb;
+	start_end_logger* logger;
+>>>>>>> 416df
 	unique_ptr<reader_latest<hologram_input>> _m_in;
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
