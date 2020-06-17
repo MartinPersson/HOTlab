@@ -1,4 +1,4 @@
-NVCC=nvcc --gpu-architecture=sm_75
+NVCC=nvcc --gpu-architecture=sm_60
 CC=clang
 CXX=clang++
 NVCCFLAGS=-lineinfo --maxrregcount=63
