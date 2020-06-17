@@ -934,15 +934,15 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
         cudaDeviceSynchronize();
     }
 
-    if (saveSpotI)
-        M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, weightMemSize, cudaMemcpyDeviceToHost));
-    else
-        M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
+    // if (saveSpotI)
+    //     M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, weightMemSize, cudaMemcpyDeviceToHost));
+    // else
+    //     M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
     M_SAFE_CALL(cudaMemcpy(hologram, d_hologram, hologramMemSize, cudaMemcpyDeviceToHost));
     t = getClock() - t;
     //printf("Total time = %12.8lf seconds\n", t);
     //printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
-    printf("%12.8lf\n", t);
+    // printf("%12.8lf\n", t);
     // Handle CUDA errors
     status = cudaGetLastError();
     return status;
@@ -984,6 +984,8 @@ float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
 
 bool HLG_initailize()
 {
+    cudaSetDevice(0);
+    cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
     double t = getClock();
     srand(1);
     // Correction parameters
@@ -1079,4 +1081,3 @@ bool HLG_cleanup(){
 
     return true;
 }
-

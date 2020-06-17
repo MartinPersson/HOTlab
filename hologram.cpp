@@ -3,6 +3,7 @@
 #include "common/phonebook.hpp"
 #include "common/data_format.hpp"
 #include "common/logger.hpp"
+#include "common/threadloop.hpp"
 #include "hologram.h"
 #include <chrono>
 #include <thread>
@@ -17,7 +18,7 @@ using std::unique_ptr;
 using std::thread;
 using std::atomic;
 
-class hologram : public plugin {
+class hologram : public threadloop {
 public:
 	hologram(std::string name_, phonebook* pb_)
 		: threadloop{name_, pb_}
@@ -29,8 +30,10 @@ public:
 		, _stat_missed(0)
 		, logger{"hologram"}
 	{
-		auto ret = HLG_initailize();
-		throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
+		bool ret = HLG_initailize();
+		if (!ret) {
+			throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
+		}
 	}
 
 	void _p_one_iteration() override {
@@ -48,18 +51,16 @@ public:
 			_stat_processed++;
 			//printf("[Hologram] Running sample %ld, samples dropped since last sample: %ld\n", _stat_processed, _stat_missed);
 			logger.log_start(std::chrono::high_resolution_clock::now());
-			HLG_process();
+			{
+				PRINT_WALL_TIME_FOR_THIS_BLOCK("hologram_gpu");
+				HLG_process();
+			}
 			logger.log_end(std::chrono::high_resolution_clock::now());
 			_seq_expect = in->seq+1;
 	}
 
 private:
-<<<<<<< HEAD
-	switchboard *sb;
-=======
-	const std::shared<switchboard>*sb;
-	start_end_logger* logger;
->>>>>>> 416df
+	const std::shared_ptr<switchboard>sb;
 	unique_ptr<reader_latest<hologram_input>> _m_in;
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
