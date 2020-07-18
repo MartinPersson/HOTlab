@@ -1,10 +1,12 @@
 #include "common/plugin.hpp"
+#include "common/threadloop.hpp"
 #include "common/switchboard.hpp"
 #include "common/phonebook.hpp"
 #include "common/data_format.hpp"
 #include "common/logger.hpp"
 #include "hologram.h"
 #include <chrono>
+#include <memory>
 #include <thread>
 #include <cstdio>
 #include <cstdlib>
@@ -17,7 +19,7 @@ using std::unique_ptr;
 using std::thread;
 using std::atomic;
 
-class hologram : public plugin {
+class hologram : public threadloop {
 public:
 	hologram(std::string name_, phonebook* pb_)
 		: threadloop{name_, pb_}
@@ -33,7 +35,7 @@ public:
 		throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
 	}
 
-	void _p_one_iteration() override {
+	virtual void _p_one_iteration() override {
 			auto in = _m_in->get_latest_ro();
 			if (!in || in->seq == _seq_expect-1) {
 				// No new data, sleep
@@ -54,12 +56,7 @@ public:
 	}
 
 private:
-<<<<<<< HEAD
-	switchboard *sb;
-=======
-	const std::shared<switchboard>*sb;
-	start_end_logger* logger;
->>>>>>> 416df
+	const std::shared_ptr<switchboard> sb;
 	unique_ptr<reader_latest<hologram_input>> _m_in;
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
