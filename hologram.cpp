@@ -31,11 +31,13 @@ public:
 		, _stat_missed(0)
 		, logger{"hologram"}
 	{
-		auto ret = HLG_initailize();
-		throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
+		bool ret = HLG_initailize();
+		if (!ret) {
+			throw std::runtime_error{"Hologram Initialization failed"};
+		}
 	}
 
-	virtual void _p_one_iteration() override {
+	virtual void _p_one_iteration() override b{
 			auto in = _m_in->get_latest_ro();
 			if (!in || in->seq == _seq_expect-1) {
 				// No new data, sleep
