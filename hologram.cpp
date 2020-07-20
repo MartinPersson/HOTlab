@@ -37,7 +37,7 @@ public:
 		}
 	}
 
-	virtual void _p_one_iteration() override b{
+	virtual void _p_one_iteration() override {
 			auto in = _m_in->get_latest_ro();
 			if (!in || in->seq == _seq_expect-1) {
 				// No new data, sleep
@@ -55,7 +55,7 @@ public:
 			HLG_process();
 			logger.log_end(std::chrono::high_resolution_clock::now());
 			_seq_expect = in->seq+1;
-	}
+	};
 
 private:
 	const std::shared_ptr<switchboard> sb;
