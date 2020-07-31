@@ -32,3 +32,5 @@ _ReSharper*/
 [Ll]abVIEW*/
 [Rr]unDLL*/
 *.o
+hologram_solo
+*.so

@@ -1,4 +1,5 @@
 #include "common/plugin.hpp"
+#include "common/threadloop.hpp"
 #include "common/switchboard.hpp"
 #include "common/phonebook.hpp"
 #include "common/data_format.hpp"
@@ -6,6 +7,7 @@
 #include "common/threadloop.hpp"
 #include "hologram.h"
 #include <chrono>
+#include <memory>
 #include <thread>
 #include <cstdio>
 #include <cstdlib>
@@ -68,7 +70,6 @@ private:
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
 	start_end_logger logger;
-
 };
 
 
