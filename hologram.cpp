@@ -30,7 +30,7 @@ public:
 		, _stat_missed(0)
 		, logger{"hologram"}
 	{
-		bool ret = HLG_initailize();
+		bool ret = HLG_initialize();
 		if (!ret) {
 			throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
 		}
