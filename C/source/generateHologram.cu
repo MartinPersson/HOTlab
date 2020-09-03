@@ -25,7 +25,6 @@
 //#define M_CORE_DEBUG
 
 #include "hologram.h"
-#include "stats.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
 #endif
@@ -37,8 +36,8 @@
 #define BLOCK_SIZE 256
 #define BLOCK_STRIDE 4
 
-#define SLM_HEIGHT 1024
-#define SLM_WIDTH 2048
+#define SLM_HEIGHT 1440
+#define SLM_WIDTH 2560
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
 #define NUM_SPOTS 2
@@ -982,7 +981,7 @@ float *amps = (float *) malloc(numSpots * numIterations * NUM_CHANNELS * sizeof(
 float * const initPhases = (float *) malloc(numPixels * NUM_CHANNELS * sizeof(float)); // [-pi, pi];
 float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
 
-bool HLG_initailize()
+bool HLG_initialize()
 {
     cudaSetDevice(0);
     cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
