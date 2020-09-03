@@ -23,12 +23,12 @@
 
 int main(int argc, char *argv[])
 {
-	HLG_initailize();
+  HLG_initialize();
 
-   for (int i = 0; i < 60 * 2 * 60; ++i){
-	  HLG_process();
-	}
+  for (int i = 0; i < 10; ++i) {
+    HLG_process();
+  }
 
-   HLG_cleanup();
-	return 0;
+  HLG_cleanup();
+  return 0;
 }
