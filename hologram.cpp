@@ -13,8 +13,6 @@
 #include <cstdlib>
 #include <atomic>
 
-#include "stats.h"
-
 using namespace ILLIXR;
 using std::unique_ptr;
 using std::thread;

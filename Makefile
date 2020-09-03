@@ -9,8 +9,8 @@ RM=rm -f
 
 DBG_CFLAGS=-Og -g -ggdb
 OPT_CFLAGS=-O3 -DNDEBUG
-DBG_NVCCFLAGS=--compiler-options "$(CFLAGS) $(CXXFLAGS) $(DBG_CFLAGS)" --linker-options "$(LDFLAGS)" -g
-OPT_NVCCFLAGS=--compiler-options "$(CFLAGS) $(CXXFLAGS) $(OPT_CFLAGS)" --linker-options "$(LDFLAGS)" -O3 -DNDEBUG
+DBG_NVCCFLAGS=--compiler-options "$(CFLAGS) $(DBG_CFLAGS)" --linker-options "$(LDFLAGS)" -g
+OPT_NVCCFLAGS=--compiler-options "$(CFLAGS) $(OPT_CFLAGS)" --linker-options "$(LDFLAGS)" -O3 -DNDEBUG
 
 .PHONY: clean
 
@@ -33,4 +33,4 @@ hologram.opt.o: hologram.cpp
 	$(CXX)  $(CXXFLAGS)  $(OPT_CFLAGS) -IC/source -c $^ -o $@
 
 clean:
-	$(RM) *.so *.exe
+	$(RM) *.so *.exe *.o

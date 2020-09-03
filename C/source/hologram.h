@@ -14,7 +14,7 @@
 //#define M_CORE_DEBUG
 
 // External interface functions
-bool HLG_initailize();
+bool HLG_initialize();
 bool HLG_process();
 bool HLG_cleanup();
 
