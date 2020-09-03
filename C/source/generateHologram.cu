@@ -21,7 +21,7 @@
 */
 
 // Activates a number of custom debug macros
-#define M_CUDA_DEBUG
+//#define M_CUDA_DEBUG
 //#define M_CORE_DEBUG
 
 #include "hologram.h"

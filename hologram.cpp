@@ -53,13 +53,8 @@ public:
 		}
 	}
 
-
 	void _p_one_iteration() override {
-		PRINT_WALL_TIME_FOR_THIS_BLOCK("hologram_wall");
-		//printf("[Hologram] Running sample %ld, samples dropped since last sample: %ld\n", _stat_processed, _stat_missed);
-		logger.log_start(std::chrono::high_resolution_clock::now());
 		HLG_process();
-		logger.log_end(std::chrono::high_resolution_clock::now());
 	}
 
 private:
