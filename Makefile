@@ -1,6 +1,6 @@
 NVCC=nvcc
-CC=clang
-CXX=clang++
+CC=clang-10
+CXX=clang++-10
 CFLAGS=-Wall -fPIC
 CXXFLAGS=-std=c++2a -Wall -fPIC
 LDFLAGS=-lpthread -pthread
