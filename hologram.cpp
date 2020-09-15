@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <atomic>
+#include <cuda_runtime_api.h>
 
 using namespace ILLIXR;
 using std::unique_ptr;
@@ -36,6 +37,13 @@ public:
 		}
 	}
 
+	// destructor
+	virtual ~hologram() override {
+		for (int i = 0; i < startDurations.size(); ++i) {
+			std::cout << "gpu_timer,hologram," << i << ",0,0," << (stopDurations[i] - startDurations[i]) * 1000000 << "\n";
+		}
+	}
+
 	virtual skip_option _p_should_skip() override {
 		auto in = _m_in->get_latest_ro();
 		if (!in || in->seq == _seq_expect-1) {
@@ -54,7 +62,22 @@ public:
 	}
 
 	void _p_one_iteration() override {
+		cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+		startDurations.push_back(total_gpu_time);
+
+		cudaEventRecord(start, 0);
 		HLG_process();
+		cudaEventRecord(stop, 0);
+
+		cudaEventSynchronize(stop);
+    float elapsed_time;
+    cudaEventElapsedTime(&elapsed_time, start, stop);
+    total_gpu_time += elapsed_time;
+
+		stopDurations.push_back(total_gpu_time);
 	}
 
 private:
@@ -63,6 +86,10 @@ private:
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
 	start_end_logger logger;
+
+	std::vector<float> startDurations;
+	std::vector<float> stopDurations;
+	float total_gpu_time = 0;
 };
 
 
