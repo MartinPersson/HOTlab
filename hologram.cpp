@@ -35,6 +35,9 @@ public:
 		if (!ret) {
 			throw std::runtime_error{"Hologram Initialization failed (" + std::to_string(ret) + ")"};
 		}
+
+		cudaEventCreate(&_start);
+		cudaEventCreate(&_stop);
 	}
 
 	// destructor
@@ -62,20 +65,16 @@ public:
 	}
 
 	void _p_one_iteration() override {
-		cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
 		startDurations.push_back(total_gpu_time);
 
-		cudaEventRecord(start, 0);
+		cudaEventRecord(_start, 0);
 		HLG_process();
-		cudaEventRecord(stop, 0);
+		cudaEventRecord(_stop, 0);
 
-		cudaEventSynchronize(stop);
+		cudaEventSynchronize(_stop);
     float elapsed_time;
-    cudaEventElapsedTime(&elapsed_time, start, stop);
     total_gpu_time += elapsed_time;
+    cudaEventElapsedTime(&elapsed_time, _start, _stop);
 
 		stopDurations.push_back(total_gpu_time);
 	}
@@ -90,6 +89,9 @@ private:
 	std::vector<float> startDurations;
 	std::vector<float> stopDurations;
 	float total_gpu_time = 0;
+	// Timing
+	cudaEvent_t _start;
+	cudaEvent_t _stop;
 };
 
 
