@@ -42,8 +42,8 @@ public:
 
 	// destructor
 	virtual ~hologram() override {
-		for (int i = 0; i < startDurations.size(); ++i) {
-			std::cout << "gpu_timer,hologram," << i << ",0,0," << (stopDurations[i] - startDurations[i]) * 1000000 << "\n";
+		for (int i = 0; i < _start_durations.size(); ++i) {
+			std::cout << "gpu_timer,hologram," << i << ",0,0," << (_stop_durations[i] - _start_durations[i]) * 1000000 << "\n";
 		}
 	}
 
@@ -65,7 +65,7 @@ public:
 	}
 
 	void _p_one_iteration() override {
-		startDurations.push_back(total_gpu_time);
+		_start_durations.push_back(_total_gpu_time);
 
 		cudaEventRecord(_start, 0);
 		HLG_process();
@@ -73,25 +73,25 @@ public:
 
 		cudaEventSynchronize(_stop);
     float elapsed_time;
-    total_gpu_time += elapsed_time;
     cudaEventElapsedTime(&elapsed_time, _start, _stop);
+    _total_gpu_time += elapsed_time;
 
-		stopDurations.push_back(total_gpu_time);
+		_stop_durations.push_back(_total_gpu_time);
 	}
 
 private:
-	const std::shared_ptr<switchboard>sb;
+	const std::shared_ptr<switchboard> sb;
 	unique_ptr<reader_latest<hologram_input>> _m_in;
 	unique_ptr<writer<hologram_output>> _m_out;
 	long long _seq_expect, _stat_processed, _stat_missed;
 	start_end_logger logger;
 
-	std::vector<float> startDurations;
-	std::vector<float> stopDurations;
-	float total_gpu_time = 0;
 	// Timing
 	cudaEvent_t _start;
 	cudaEvent_t _stop;
+	std::vector<float> _start_durations;
+	std::vector<float> _stop_durations;
+	float _total_gpu_time = 0;
 };
 
 
