@@ -1,10 +1,11 @@
 NVCC=nvcc
-CC=clang
-CXX=clang++
+CC=clang-10
+CXX=clang++-10
 CFLAGS=-Wall -fPIC
 CXXFLAGS=-std=c++2a -Wall -fPIC
 LDFLAGS=-lpthread -pthread
 NVCCFLAGS=--gpu-architecture=sm_60 -lineinfo --maxrregcount=63
+INCLUDE_DIRS=-IC/source -I/usr/local/cuda/include
 RM=rm -f
 
 DBG_CFLAGS=-Og -g -ggdb
@@ -27,10 +28,10 @@ hologram.opt.exe: C/source/testMain.cu C/source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS) $(OPT_NVCCFLAGS) $^ -o $@
 
 hologram.dbg.o: hologram.cpp
-	$(CXX)  $(CXXFLAGS)  $(DBG_CFLAGS) -IC/source -c $^ -o $@
+	$(CXX) $(CXXFLAGS) $(DBG_CFLAGS) $(INCLUDE_DIRS) -c $^ -o $@
 
 hologram.opt.o: hologram.cpp
-	$(CXX)  $(CXXFLAGS)  $(OPT_CFLAGS) -IC/source -c $^ -o $@
+	$(CXX) $(CXXFLAGS) $(OPT_CFLAGS) $(INCLUDE_DIRS) -c $^ -o $@
 
 clean:
 	$(RM) *.so *.exe *.o
