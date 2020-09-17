@@ -875,7 +875,6 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
                      float * const interAmps)        // intermediate amplitudes (debug)
 {
     computeAndCopySpotData(spotX, spotY, spotZ, spotI, numSpots);
-    double t;
     dim3 toSpotGridDim(ceil(1.0 * NUM_PIXELS/(BLOCK_SIZE * BLOCK_STRIDE)), numSpots, NUM_CHANNELS);
     dim3 toSpotBlockDim(BLOCK_SIZE, 1, 1);
     dim3 toSpotSumGridDim(numSpots, NUM_CHANNELS, 1);
@@ -884,7 +883,6 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
     dim3 toSLMBlockDim(BLOCK_SIZE, 1, 1);
 
     //printf("Starting Fresnel...\n");
-    //t = getClock();
 
     for (int l = 0; l < numIterations; l++) {
         //printf("Iteration %d\n", l);
@@ -947,11 +945,6 @@ int generateHologram(unsigned char * const hologram, // hologram to send to SLM
     //    M_SAFE_CALL(cudaMemcpy(interAmps, d_obtainedI, weightMemSize, cudaMemcpyDeviceToHost));
     //else
     //    M_SAFE_CALL(cudaMemcpy(interAmps, d_weights, weightMemSize, cudaMemcpyDeviceToHost));
-
-    //t = getClock() - t;
-    //printf("Total time = %12.8lf seconds\n", t);
-    //printf("Time/iteration = %12.8lf seconds\n", t/((double) numIterations));
-    //printf("%12.8lf\n", t);
 
     // Handle CUDA errors
     status = cudaGetLastError();
