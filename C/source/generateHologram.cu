@@ -775,6 +775,7 @@ int setup(const float * const initPhases,       // initial pixel phases
         printf("No CUDA compatible GPU found\n");
         exit(1);
     } else {
+        M_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
         M_SAFE_CALL(cudaSetDevice(0));
     }
 
