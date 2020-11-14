@@ -25,6 +25,9 @@
 //#define M_CORE_DEBUG
 
 #include "hologram.h"
+#include "common/global_module_defs.hpp"
+
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
 #endif
@@ -36,8 +39,20 @@
 #define BLOCK_SIZE 256
 #define BLOCK_STRIDE 4
 
-#define SLM_HEIGHT 1440
+//Declaring SLM_WIDTH using global_module_defs.hpp
+#ifdef FB_WIDTH
+#define SLM_WIDTH ILLIXR::FB_WIDTH
+#else
 #define SLM_WIDTH 2560
+#endif ///SLM_WIDTH
+
+//Declaring SLM_HEIGHT using global_module_defs.hpp
+#ifdef FB_HEIGHT
+#define SLM_HEIGHT ILLIXR::FB_HEIGHT
+#else
+#define SLM_HEIGHT 1440
+#endif //SLM_HEIGHT
+	
 #define NUM_PIXELS (SLM_HEIGHT * SLM_WIDTH)
 #define NUM_CHANNELS 3
 #define NUM_SPOTS 2
