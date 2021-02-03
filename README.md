@@ -1,4 +1,3 @@
-
 # Computational Holography
 
 Part of [ILLIXR](https://github.com/ILLIXR/ILLIXR), the Illinios Extended Reality Benchmark Suite. This component is responsible for calculating image holograms (per-pixel phase masks) using the Weighted Gerchberg–Saxton (GSW) algorithm.
@@ -7,7 +6,7 @@ Part of [ILLIXR](https://github.com/ILLIXR/ILLIXR), the Illinios Extended Realit
 
 ## hologram.<span></span>cpp
 
-Illixr plugin interface file for integrating hologram into illixr.
+ILLIXR plugin interface file for integrating hologram into ILLIXR.
 
 ## generateHologram.<span></span>cu
 
@@ -33,10 +32,10 @@ The original hologram implementation. This implementation did not support arbitr
 
 # Build
 
-Building hologram for illixr is automatically done when building the whole illixr project.
+Building hologram for ILLIXR is automatically done when building the whole ILLIXR project.
 Here is how to build it individually
 
-Debug build plugin for illixr
+Debug build plugin for ILLIXR:
 
 ```sh
 make 
@@ -45,20 +44,27 @@ make
 or
 
 ```sh
-make dbg_so
+make hologram.dbg.so
 ```
 
-Release build plugin for illixr
+Release build plugin for ILLIXR:
 
 ```sh
-make opt_so
+make hologram.opt.so
 ```
 
-Standalone executable build
+Standalone executable build:
 
 ```sh
-make solo
+make hologram.dbg.exe
 ```
+
+or
+
+```sh
+make hologram.opt.exe
+```
+
 
 # ILLIXR integration
 
@@ -69,7 +75,7 @@ our paper. Since we do not have an accurate prediction of vsync, hologram proces
 delayed.
 
 Currently this component is for profiling purpose only. Performance-wise, hologram is input
-invariant. Current illixr and monado do not support depth buffer from user application. Algorithms
+invariant. Current ILLIXR and monado do not support depth buffer from user application. Algorithms
 to calculate depth spots from depth buffer is also missing.
 
 This component uses the logger to record its runtime.
