@@ -21,11 +21,14 @@
 */
 
 // Activates a number of custom debug macros
-//#define M_CUDA_DEBUG
+#define M_CUDA_DEBUG
 //#define M_CORE_DEBUG
 
 #include "hologram.h"
+
+#ifdef ILLIXR_INTEGRATION
 #include "common/global_module_defs.hpp"
+#endif // ILLIXR_INTEGRATION
 
 
 #ifndef M_PI
@@ -784,16 +787,6 @@ int setup(const float * const initPhases,       // initial pixel phases
           const float * const polCoeffs,        // SVPR polynomial coefficients
           const unsigned char * const lut)      // phase-to-uc conversion LUT
 {
-    // Make sure there's a GPU that we can use
-    int deviceCount = 0;
-    if (cudaGetDeviceCount(&deviceCount) != 0) {
-        printf("No CUDA compatible GPU found\n");
-        exit(1);
-    } else {
-        M_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
-        M_SAFE_CALL(cudaSetDevice(0));
-    }
-
     /*** Hologram ***/
     hologramMemSize = numPixels * sizeof(unsigned char) * NUM_CHANNELS;
     const unsigned int hologramPhaseMemSize = numPixels * sizeof(float) * NUM_CHANNELS;
@@ -1003,8 +996,16 @@ float * const polCoeffs = (float *) malloc(MAX_POL * sizeof(float));
 
 bool HLG_initialize()
 {
-    cudaSetDevice(0);
-    cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
+    // Make sure there's a GPU that we can use
+    int deviceCount = 0;
+    if (cudaGetDeviceCount(&deviceCount) != 0) {
+        printf("No CUDA compatible GPU found\n");
+        exit(1);
+    } else {
+        M_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
+        M_SAFE_CALL(cudaSetDevice(0));
+    }
+
     double t = getClock();
     srand(1);
     // Correction parameters

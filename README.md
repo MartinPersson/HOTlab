@@ -35,36 +35,42 @@ The original hologram implementation. This implementation did not support arbitr
 Building hologram for ILLIXR is automatically done when building the whole ILLIXR project.
 Here is how to build it individually
 
-Debug build plugin for ILLIXR:
-
-```sh
-make 
-```
-
-or
+To build shared library plugin for ILLIXR:
 
 ```sh
 make hologram.dbg.so
 ```
-
-Release build plugin for ILLIXR:
-
+or
 ```sh
 make hologram.opt.so
 ```
 
-Standalone executable build:
+To build a standalone executable for ILLIXR:
 
 ```sh
 make hologram.dbg.exe
 ```
-
 or
-
 ```sh
 make hologram.opt.exe
 ```
 
+# Jetson compilation
+
+The makefile contains seperate targets for compilation on an Nvidia Jetson Xavier
+    (Jetson Xavier AGX has Volta GPU which only supports `--gpu-architecture=sm_72`).
+To target Jetson Xavier, use the following make target template `<target-name>.jetson.<compile-type>.<target-ext>`.
+For example, to generate the debug executable for hologram, run:
+
+```sh
+make hologram.jetson.dbg.exe
+```
+
+Once compiled, run:
+
+```sh
+./hologram.jetson.dbg.exe <num-trials>
+```
 
 # ILLIXR integration
 
