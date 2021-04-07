@@ -56,5 +56,7 @@ hologram.jetson.dbg.o: hologram.cpp
 hologram.jetson.opt.o: hologram.cpp
 	$(CXX) $(CXXFLAGS) $(OPT_CFLAGS) $(INCLUDE_DIRS) -c $^ -o $@
 
+tests/run:
+
 clean:
 	$(RM) *.so *.exe *.o

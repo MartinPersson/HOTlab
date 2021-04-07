@@ -47,7 +47,7 @@ public:
 
     virtual skip_option _p_should_skip() override {
 		auto in = _m_in.get_ro_nullable();
-		if (!in || in->seq == _seq_expect-1) {
+		if (in == nullptr || in->seq == _seq_expect - 1) {
 			// No new data, sleep
 			return skip_option::skip_and_yield;
 		} else {
@@ -57,7 +57,7 @@ public:
 				_stat_missed = 0;
 			}
 			_stat_processed++;
-			_seq_expect = in->seq+1;
+			_seq_expect = in->seq + 1;
 			return skip_option::run;
 		}
 	}
