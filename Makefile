@@ -6,7 +6,7 @@ CXXFLAGS=-std=c++17 -Wall -fPIC
 LDFLAGS=-lpthread -pthread
 NVCCFLAGS=--gpu-architecture=sm_60 -lineinfo --maxrregcount=63
 NVCCFLAGS_JETSONXAVIER=--gpu-architecture=sm_72 -lineinfo --maxrregcount=63
-INCLUDE_DIRS=-IC/source -I/usr/local/cuda/include
+INCLUDE_DIRS=-Isource -I/usr/local/cuda/include
 RM=rm -f
 
 DBG_CFLAGS=-Og -g -ggdb
@@ -18,16 +18,16 @@ OPT_NVCCFLAGS=--compiler-options "$(CFLAGS) $(OPT_CFLAGS)" --linker-options "$(L
 
 ## Targets for Desktop
 
-plugin.dbg.so: hologram.dbg.o C/source/generateHologram.cu
+plugin.dbg.so: hologram.dbg.o source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS) $(DBG_NVCCFLAGS) -DILLIXR_INTEGRATION $^ -shared -o $@
 
-plugin.opt.so: hologram.opt.o C/source/generateHologram.cu
+plugin.opt.so: hologram.opt.o source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS) $(OPT_NVCCFLAGS) -DILLIXR_INTEGRATION $^ -shared -o $@
 
-hologram.dbg.exe: C/source/testMain.cu C/source/generateHologram.cu
+hologram.dbg.exe: source/testMain.cu source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS) $(DBG_NVCCFLAGS) $^ -o $@
 
-hologram.opt.exe: C/source/testMain.cu C/source/generateHologram.cu
+hologram.opt.exe: source/testMain.cu source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS) $(OPT_NVCCFLAGS) $^ -o $@
 
 hologram.dbg.o: hologram.cpp
@@ -38,16 +38,16 @@ hologram.opt.o: hologram.cpp
 
 ## Targets for Jetson Xavier
 
-plugin.jetson.dbg.so: hologram.jetson.dbg.o C/source/generateHologram.cu
+plugin.jetson.dbg.so: hologram.jetson.dbg.o source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS_JETSONXAVIER) $(DBG_NVCCFLAGS) -DILLIXR_INTEGRATION $^ -shared -o $@
 
-plugin.jetson.opt.so: hologram.jetson.opt.o C/source/generateHologram.cu
+plugin.jetson.opt.so: hologram.jetson.opt.o source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS_JETSONXAVIER) $(OPT_NVCCFLAGS) -DILLIXR_INTEGRATION $^ -shared -o $@
 
-hologram.jetson.dbg.exe: C/source/testMain.cu C/source/generateHologram.cu
+hologram.jetson.dbg.exe: source/testMain.cu source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS_JETSONXAVIER) $(DBG_NVCCFLAGS) $^ -o $@
 
-hologram.jetson.opt.exe: C/source/testMain.cu C/source/generateHologram.cu
+hologram.jetson.opt.exe: source/testMain.cu source/generateHologram.cu
 	$(NVCC) $(NVCCFLAGS_JETSONXAVIER) $(OPT_NVCCFLAGS) $^ -o $@
 
 hologram.jetson.dbg.o: hologram.cpp
